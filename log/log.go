@@ -1,9 +1,25 @@
 package log
 
+// Atomic storage for binary blobs
+//
+// TODO: this shouldn't be called log; tentatively let's call it a TxnWriter
+//
+// Supports storing binary blobs ("transactions") atomically with respect to
+// crashes.
+//
+// API:
+// - Add: commits a transaction
+// - Recover: returns successfully committed transactions
+// - there is no third method
+//
+// How to use this API:
+// - Create an applications-specific Log that embeds a TxnWriter.
+// - Serialize application-level operations and add then as transactions.
+// - Cache all writes and expose a read API.
+// - Recover the committed transactions in an idempotent way.
+
 import (
 	"encoding/gob"
-	"errors"
-	"io"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -21,22 +37,60 @@ type Record struct {
 	Data []byte
 }
 
-type LogWriter struct {
+type Log struct {
 	log fs.File
 	enc *gob.Encoder
 }
 
 const logFilename = "log"
 
-func NewWriter(fs fs.Filesys) LogWriter {
+func Init(fs fs.Filesys) Log {
 	f, err := fs.Create(logFilename)
 	if err != nil {
 		panic(err)
 	}
-	return LogWriter{f, gob.NewEncoder(f)}
+	return Log{f, gob.NewEncoder(f)}
 }
 
-func (l LogWriter) Add(data []byte) error {
+func recoverTxns(fs fs.Filesys) (txns [][]byte) {
+	f, err := fs.Open(logFilename)
+	if err != nil {
+		panic(err)
+	}
+	dec := gob.NewDecoder(f)
+	for {
+		var data Record
+		err = dec.Decode(&data)
+		if err != nil {
+			// interpret this as a partial transaction
+			return
+		}
+		if data.Type != DataRecord {
+			panic("expected data record")
+		}
+		var commit Record
+		err = dec.Decode(&commit)
+		if err != nil {
+			// data record was not successfully committed, so ignore it
+			return
+		}
+		if commit.Type != CommitRecord {
+			panic("expected commit record")
+		}
+		txns = append(txns, data.Data)
+	}
+}
+
+func Recover(fs fs.Filesys) ([][]byte, Log) {
+	txns := recoverTxns(fs)
+	f, err := fs.Append(logFilename)
+	if err != nil {
+		panic(err)
+	}
+	return txns, Log{f, gob.NewEncoder(f)}
+}
+
+func (l Log) Add(data []byte) error {
 	l.enc.Encode(Record{DataRecord, data})
 	l.log.Sync()
 	l.enc.Encode(Record{CommitRecord, nil})
@@ -44,41 +98,6 @@ func (l LogWriter) Add(data []byte) error {
 	return nil
 }
 
-func (l LogWriter) Close() {
+func (l Log) Close() {
 	l.log.Close()
-}
-
-type LogReader struct {
-	log io.ReadCloser
-	dec *gob.Decoder
-}
-
-func NewReader(fs fs.Filesys) LogReader {
-	f, err := fs.Open(logFilename)
-	if err != nil {
-		panic(err)
-	}
-	return LogReader{f, gob.NewDecoder(f)}
-}
-
-func (l LogReader) Next() ([]byte, error) {
-	var data Record
-	err := l.dec.Decode(&data)
-	if err != nil {
-		// interpret this as a partial transaction and ignore it
-		return nil, nil
-	}
-	if data.Type != DataRecord {
-		return nil, errors.New("expected data record next")
-	}
-	var commit Record
-	err = l.dec.Decode(&commit)
-	if err != nil {
-		// data record was not successfully committed, so ignore it
-		return nil, nil
-	}
-	if commit.Type != CommitRecord {
-		return nil, errors.New("expected commit record")
-	}
-	return data.Data, nil
 }

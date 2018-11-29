@@ -1,57 +1,49 @@
 package db
 
 import (
-	"errors"
-
 	"github.com/tchajed/specious-db/fs"
 )
 
-type Key = []byte
-type Value = []byte
-
-func KeyEq(k1 Key, k2 Key) bool {
-	if len(k1) != len(k2) {
-		return false
-	}
-	for i := range k1 {
-		if k1[i] != k2[i] {
-			return false
-		}
-	}
-	return true
-}
-
-type ErrKeyMissing struct{}
-
-func (e ErrKeyMissing) Error() string {
-	return "no such key"
-}
-
-type Store interface {
-	Get(k Key) (Value, error)
-	Put(k Key, v Value) error
-	Delete(k Key) error
-	// TODO: iterator API
-}
-
 type Database struct {
-	fs fs.Filesys
+	log dbLog
+	fs  fs.Filesys
 }
 
 func (db *Database) Get(k Key) (Value, error) {
-	return nil, ErrKeyMissing{}
+	v, err := db.log.Get(k)
+	if err != nil {
+		switch err.(type) {
+		case ErrKeyMissing:
+			break
+		default:
+			return v, err
+		}
+	}
+	// not found in log; continue searching in SSTables
+	panic("sstables not implemented")
 }
 
 func (db *Database) Put(k Key, v Value) error {
-	return errors.New("not implemented")
+	return db.log.Put(k, v)
 }
 
-func (db *Database) Delete(Key) error {
-	return nil
+func (db *Database) Delete(k Key) error {
+	return db.log.Delete(k)
 }
 
 var _ Store = &Database{}
 
+func initManifest(fs fs.Filesys) {
+	// TODO: create manifest file pointing to no sstables
+}
+
+func Init(fs fs.Filesys) *Database {
+	initManifest(fs)
+	log := initLog(fs)
+	return &Database{log, fs}
+}
+
 func New(fs fs.Filesys) *Database {
-	return &Database{fs}
+	log := recoverLog(fs)
+	return &Database{log, fs}
 }

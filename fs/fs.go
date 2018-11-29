@@ -13,5 +13,7 @@ type File interface {
 type Filesys interface {
 	Open(fname string) (io.ReadCloser, error)
 	Create(fname string) (File, error)
+	// like create but append to an existing file
+	Append(fname string) (File, error)
 	List() []string
 }
