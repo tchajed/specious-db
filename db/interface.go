@@ -1,5 +1,6 @@
 package db
 
+// TODO: this needs to be uint64, bunch of things are specialized now
 type Key = []byte
 type Value = []byte
 

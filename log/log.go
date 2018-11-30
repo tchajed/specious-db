@@ -77,6 +77,10 @@ func recoverTxns(fs fs.Filesys) (txns [][]byte) {
 
 func Recover(fs fs.Filesys) ([][]byte, Log) {
 	txns := recoverTxns(fs)
+	// TODO: probably don't need to append to an existing log; however, need to
+	// think about how the API works since higher-level needs a call to indicate
+	// it's done recovering and log should clear the existing file and
+	// re-initialize.
 	f := fs.Append(logFilename)
 	return txns, Log{f, gob.NewEncoder(f)}
 }

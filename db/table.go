@@ -1,9 +1,7 @@
 package db
 
 import (
-	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -15,17 +13,20 @@ import (
 //
 // table format:
 // entries: []Entry
-// index: Index
+// index: []indexEntry
 // index_ptr: SliceHandle
+//
+// Entry:
+// key uint64
+// valueLen uint16
+// valueData [valueLen]byte
 //
 // SliceHandle:
 // offset uint64
 // length uint32
 //
-// Note: gob encoding is somewhat complicated here (and will change to something
-// more explicit); index contains several handles, each of which points to a
-// gob-encoded slice, whereas actual format will encode entries in sequence and
-// rely on handles and sequential decoding to identify individual entries.
+// The entries and index are not length-prefixed, since SliceHandles delimit
+// what ranges need to be parsed.
 
 type Table struct {
 	name  string
@@ -76,11 +77,24 @@ func readIndexData(fs fs.Filesys, name string) []byte {
 	return data
 }
 
+func (r *SliceReader) IndexEntry() indexEntry {
+	h := r.Handle()
+	keys := r.KeyRange()
+	return indexEntry{h, keys}
+}
+
+func (w *BinaryWriter) IndexEntry(e indexEntry) {
+	w.Handle(e.Handle)
+	w.KeyRange(e.Keys)
+}
+
 func NewTable(name string, fs fs.Filesys) Table {
 	indexData := readIndexData(fs, name)
 	var index tableIndex
-	dec := gob.NewDecoder(bytes.NewBuffer(indexData))
-	dec.Decode(&index.entries)
+	r := SliceReader{indexData}
+	for r.RemainingBytes() > 0 {
+		index.entries = append(index.entries, r.IndexEntry())
+	}
 	return Table{name, fs, index}
 }
 
@@ -91,13 +105,9 @@ func (t Table) Get(k Key) MaybeValue {
 		return NoValue
 	}
 	data := t.fs.ReadAt(t.name, int(h.Offset), int(h.Length))
-	dec := gob.NewDecoder(bytes.NewBuffer(data))
-	var entries []Entry
-	err := dec.Decode(&entries)
-	if err != nil {
-		panic(err)
-	}
-	for _, e := range entries {
+	r := SliceReader{data}
+	for r.RemainingBytes() > 0 {
+		e := r.Entry()
 		if KeyEq(e.Key, k) {
 			return SomeValue(e.Value)
 		}
@@ -107,6 +117,23 @@ func (t Table) Get(k Key) MaybeValue {
 
 func (t Table) Keys() KeyRange {
 	return t.index.Keys()
+}
+
+type tableWriter struct {
+	f            fs.File
+	currentIndex indexEntry
+	entries      []indexEntry
+}
+
+func (w *tableWriter) Put(e Entry) {
+	w.currentEntries = append(w.currentEntries, e)
+}
+
+func (w tableWriter) Close() {
+	err := w.f.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 // TODO: streaming construction API that creates index entries periodically
