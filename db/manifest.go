@@ -9,6 +9,7 @@ package db
 
 import (
 	"encoding/gob"
+	"fmt"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -72,11 +73,35 @@ func newManifest(fs fs.Filesys) Manifest {
 	return m
 }
 
-func (m *Manifest) Compact() {
-	// TODO: implement compaction
-	//
-	// requires iteration over entire table and writing out new table
+type tableCreator struct {
+	w    tableWriter
+	name string
+	m    *Manifest
 }
+
+func (c tableCreator) Put(e Entry) {
+	c.w.Put(e)
+}
+
+func (c tableCreator) Build() Table {
+	entries := c.w.Close()
+	return Table{c.name, c.m.fs, newTableIndex(entries)}
+}
+
+func (m *Manifest) InstallTable(t Table) {
+	m.tables = append(m.tables, t)
+}
+
+func (m *Manifest) NewTable(level int) tableCreator {
+	id := 0 // TODO: fresh id
+	name := fmt.Sprintf("table-l%d-%d.ldb", level, id)
+	f := m.fs.Create(name)
+	return tableCreator{newTableWriter(f), name, m}
+}
+
+// TODO: implement compaction
+//
+// requires iteration over entire table and writing out new table
 
 // TODO: pick and handle files for young generation specially, coalescing duplicates between files
 

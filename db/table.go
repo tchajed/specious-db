@@ -45,8 +45,13 @@ func (h SliceHandle) IsValid() bool {
 	return h.Length != 0
 }
 
+// TODO: make this an efficient data structure
 type tableIndex struct {
 	entries []indexEntry
+}
+
+func newTableIndex(entries []indexEntry) tableIndex {
+	return tableIndex{entries}
 }
 
 func (i tableIndex) Get(k Key) SliceHandle {
@@ -126,6 +131,15 @@ type tableWriter struct {
 	entries      []indexEntry
 }
 
+func newTableWriter(f fs.File) tableWriter {
+	return tableWriter{
+		f:            f,
+		w:            newWriter(f),
+		currentIndex: nil,
+		entries:      nil,
+	}
+}
+
 func (w tableWriter) Offset() uint64 {
 	return uint64(w.w.BytesWritten())
 }
@@ -159,7 +173,7 @@ func (w *tableWriter) flush() {
 	}
 }
 
-func (w tableWriter) Close() {
+func (w tableWriter) Close() []indexEntry {
 	w.flush()
 	indexStart := w.Offset()
 	for _, e := range w.entries {
@@ -171,4 +185,5 @@ func (w tableWriter) Close() {
 	if err != nil {
 		panic(err)
 	}
+	return w.entries
 }

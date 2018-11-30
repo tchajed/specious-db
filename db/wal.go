@@ -70,3 +70,7 @@ func recoverLog(fs fs.Filesys) dbLog {
 	var _ = txns
 	return dbLog{log, cache}
 }
+
+func (l dbLog) Close() {
+	l.log.Close()
+}

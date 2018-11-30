@@ -63,6 +63,10 @@ type BinaryWriter struct {
 	bytesWritten int
 }
 
+func newWriter(w io.Writer) BinaryWriter {
+	return BinaryWriter{w: w, bytesWritten: 0}
+}
+
 func (w BinaryWriter) BytesWritten() int {
 	return w.bytesWritten
 }

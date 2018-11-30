@@ -6,6 +6,7 @@ import (
 
 type Database struct {
 	log dbLog
+	mf  Manifest
 	fs  fs.Filesys
 }
 
@@ -28,12 +29,25 @@ func (db *Database) Delete(k Key) {
 var _ Store = &Database{}
 
 func Init(fs fs.Filesys) *Database {
-	initManifest(fs)
+	mf := initManifest(fs)
 	log := initLog(fs)
-	return &Database{log, fs}
+	return &Database{log, mf, fs}
 }
 
 func New(fs fs.Filesys) *Database {
 	log := recoverLog(fs)
-	return &Database{log, fs}
+	mf := newManifest(fs)
+	return &Database{log, mf, fs}
+}
+
+func (db *Database) CompactLog() {
+	it := db.log.Stream()
+	t := db.mf.NewTable(0)
+	for !it.IsDone() {
+		e := it.Next()
+		t.Put(e)
+	}
+	db.mf.InstallTable(t.Build())
+	db.log.Close()
+	db.log = initLog(db.fs)
 }
