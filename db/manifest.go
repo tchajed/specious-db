@@ -1,5 +1,12 @@
 package db
 
+// The manifest tracks all the known SSTables.
+//
+// This includes an on-disk representation for crash safety as well as in-memory
+// cache to lookup keys by first finding the right tables to search.
+//
+// https://play.golang.org/p/dV5lRWTnYaU
+
 import (
 	"encoding/gob"
 
@@ -70,4 +77,8 @@ func newManifest(fs fs.Filesys) Manifest {
 
 func (m *Manifest) Compact() {
 	// TODO: implement compaction
+	// requires iteration over entire table and writing out new table
 }
+
+// TODO: pick and handle files for young generation specially, coalescing duplicates between files
+// TODO: streaming construction of multiple tables, splitting at some file size

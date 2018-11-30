@@ -113,3 +113,6 @@ func (t Table) Get(k Key) (Value, error) {
 func (t Table) Keys() KeyRange {
 	return t.index.Keys()
 }
+
+// TODO: streaming construction API that creates index entries periodically
+// (every fixed number of entry bytes maybe)

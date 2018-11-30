@@ -19,7 +19,8 @@ func (db *Database) Get(k Key) (Value, error) {
 			return v, err
 		}
 	}
-	// not found in log; continue searching in SSTables
+	// not found in log
+	// TODO: search SSTables via manifest
 	panic("sstables not implemented")
 }
 
