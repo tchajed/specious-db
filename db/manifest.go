@@ -74,8 +74,10 @@ func newManifest(fs fs.Filesys) Manifest {
 
 func (m *Manifest) Compact() {
 	// TODO: implement compaction
+	//
 	// requires iteration over entire table and writing out new table
 }
 
 // TODO: pick and handle files for young generation specially, coalescing duplicates between files
+
 // TODO: streaming construction of multiple tables, splitting at some file size

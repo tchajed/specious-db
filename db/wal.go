@@ -14,34 +14,59 @@ import (
 // from a cache of the log
 type dbLog struct {
 	log log.Log
-	// TODO: in-memory cache (skip list for efficient search)
+	cache entrySearchTree
+}
+
+// TODO: implement search tree
+type entrySearchTree struct {}
+
+func (t entrySearchTree) Get(k Key) MaybeValue {
+	panic("not implemented")
+}
+
+func (t entrySearchTree) Put(k Key, v Value) {
+	panic("not implemented")
+}
+
+func (t entrySearchTree) Delete(k Key) {
+	panic("not implemented")
+}
+
+func (t entrySearchTree) Stream() EntryIterator {
+	// NOTE: this stream already colaesces all updates to the same key
+	//
+	// NOTE: streaming should be in-order, everything else relies on this
+	// initial ordering
+	panic("not implemented")
 }
 
 func (l dbLog) Get(k Key) MaybeValue {
-	// TODO: read from in-memory cache
-	panic("not implemented")
+	return l.cache.Get(k)
 }
 
 func (l dbLog) Put(k Key, v Value) {
 	// TODO: log a put operation
-	// TODO: add (k, v) to in-memory cache
-	panic("not implemented")
+	l.cache.Put(k, v)
 }
 
 func (l dbLog) Delete(k Key) {
 	// TODO: log a delete operation
-	// TODO: delete k from cache
-	panic("not implemented")
+	l.cache.Delete(k)
+}
+
+func (l dbLog) Stream() EntryIterator {
+	return l.cache.Stream()
 }
 
 func initLog(fs fs.Filesys) dbLog {
 	log := log.Init(fs)
-	return dbLog{log}
+	return dbLog{log, entrySearchTree{}}
 }
 
 func recoverLog(fs fs.Filesys) dbLog {
 	txns, log := log.Recover(fs)
+	cache := entrySearchTree{}
 	// TODO: initialize cache by processing txns
 	var _ = txns
-	return dbLog{log}
+	return dbLog{log, cache}
 }

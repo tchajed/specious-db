@@ -39,6 +39,13 @@ func (mv MaybeValue) OrElse(f func() MaybeValue) MaybeValue {
 	}
 }
 
+// NOTE: this is a commonly used higher-order interface that will probably
+// require a first order solution (and ideally a nice abstraction)
+type EntryIterator interface {
+	Next() Entry
+	IsDone() bool
+}
+
 type Store interface {
 	Get(k Key) MaybeValue
 	Put(k Key, v Value)
