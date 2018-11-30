@@ -41,7 +41,7 @@ type SliceHandle struct {
 }
 
 func (h SliceHandle) IsValid() bool {
-return h.Length != 0
+	return h.Length != 0
 }
 
 type tableIndex struct {

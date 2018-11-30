@@ -13,12 +13,12 @@ import (
 // higher-level interface to log that supports writing operations and reading
 // from a cache of the log
 type dbLog struct {
-	log log.Log
+	log   log.Log
 	cache entrySearchTree
 }
 
 // TODO: implement search tree
-type entrySearchTree struct {}
+type entrySearchTree struct{}
 
 func (t entrySearchTree) Get(k Key) MaybeValue {
 	panic("not implemented")

@@ -17,7 +17,7 @@ func (db *Database) Get(k Key) MaybeValue {
 	})
 }
 
-func (db *Database) Put(k Key, v Value){
+func (db *Database) Put(k Key, v Value) {
 	db.log.Put(k, v)
 }
 

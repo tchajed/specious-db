@@ -4,7 +4,7 @@ import "testing"
 import "github.com/stretchr/testify/assert"
 import "github.com/tchajed/specious-db/db"
 
-type StringStore struct {store db.Store}
+type StringStore struct{ store db.Store }
 
 func (s StringStore) Get(k string) string {
 	v := s.store.Get([]byte(k))
