@@ -7,30 +7,19 @@ import "github.com/tchajed/specious-db/db"
 type StringStore struct {store db.Store}
 
 func (s StringStore) Get(k string) string {
-	v, err := s.store.Get([]byte(k))
-	if err == nil {
-		return string(v)
+	v := s.store.Get([]byte(k))
+	if v.Present {
+		return string(v.Value)
 	}
-	switch err.(type) {
-	case db.ErrKeyMissing:
-		return ""
-	default:
-		panic(err)
-	}
+	return ""
 }
 
 func (s StringStore) Put(k string, v string) {
-	err := s.store.Put([]byte(k), []byte(v))
-	if err != nil {
-		panic(err)
-	}
+	s.store.Put([]byte(k), []byte(v))
 }
 
 func (s StringStore) Delete(k string) {
-	err := s.store.Delete([]byte(k))
-	if err != nil {
-		panic(err)
-	}
+	s.store.Delete([]byte(k))
 }
 
 func TestPutGet(t *testing.T) {
@@ -46,7 +35,7 @@ func TestGetEmpty(t *testing.T) {
 	s := StringStore{New()}
 	assert.Equal(s.Get(""), "")
 	s.Put("", "val")
-	assert.Equal(s.Get(""), "", "the empty key should never be stored")
+	assert.Equal(s.Get(""), "val", "the empty key should be an ordinary key")
 }
 
 func TestDelete(t *testing.T) {

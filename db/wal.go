@@ -17,18 +17,18 @@ type dbLog struct {
 	// TODO: in-memory cache (skip list for efficient search)
 }
 
-func (l dbLog) Get(k Key) (Value, error) {
+func (l dbLog) Get(k Key) MaybeValue {
 	// TODO: read from in-memory cache
 	panic("not implemented")
 }
 
-func (l dbLog) Put(k Key, v Value) error {
+func (l dbLog) Put(k Key, v Value) {
 	// TODO: log a put operation
 	// TODO: add (k, v) to in-memory cache
 	panic("not implemented")
 }
 
-func (l dbLog) Delete(k Key) error {
+func (l dbLog) Delete(k Key) {
 	// TODO: log a delete operation
 	// TODO: delete k from cache
 	panic("not implemented")

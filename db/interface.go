@@ -20,20 +20,33 @@ func KeyEq(k1 Key, k2 Key) bool {
 	return true
 }
 
-type ErrKeyMissing struct{}
+type MaybeValue struct {
+	Present bool
+	Value
+}
 
-func (e ErrKeyMissing) Error() string {
-	return "no such key"
+var NoValue = MaybeValue{Present: false, Value: nil}
+
+func SomeValue(v Value) MaybeValue {
+	return MaybeValue{Present: true, Value: v}
+}
+
+func (mv MaybeValue) OrElse(f func() MaybeValue) MaybeValue {
+	if mv.Present {
+		return mv
+	} else {
+		return f()
+	}
 }
 
 type Store interface {
-	Get(k Key) (Value, error)
-	Put(k Key, v Value) error
-	Delete(k Key) error
+	Get(k Key) MaybeValue
+	Put(k Key, v Value)
+	Delete(k Key)
 	// TODO: iterator API
 }
 
-type KeyRange struct{
+type KeyRange struct {
 	Min uint64
 	Max uint64
 }

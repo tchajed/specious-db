@@ -6,32 +6,21 @@ type Memdb struct {
 	entries []db.Entry
 }
 
-func (s Memdb) Get(k db.Key) (val db.Value, err error) {
-	if len(k) == 0 {
-		return nil, db.ErrKeyMissing{}
-	}
-	found := false
+func (s Memdb) Get(k db.Key) db.MaybeValue {
+	val := db.MaybeValue{Present: false}
 	for _, e := range s.entries {
 		if db.KeyEq(e.Key, k) {
-			val = e.Value
-			found = true
+			val = db.SomeValue(e.Value)
 		}
 	}
-	if !found {
-		err = db.ErrKeyMissing{}
-	}
-	return
+	return val
 }
 
-func (s *Memdb) Put(k db.Key, v db.Value) error {
-	if len(k) == 0 {
-		return nil
-	}
+func (s *Memdb) Put(k db.Key, v db.Value) {
 	s.entries = append(s.entries, db.Entry{k, v})
-	return nil
 }
 
-func (s *Memdb) Delete(k db.Key) (err error) {
+func (s *Memdb) Delete(k db.Key) {
 	for i, e := range s.entries {
 		if db.KeyEq(e.Key, k) {
 			s.entries[i] = db.Entry{nil, nil}

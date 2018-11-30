@@ -19,13 +19,13 @@ type Manifest struct {
 }
 
 func initManifest(fs fs.Filesys) Manifest {
-	f, err := fs.Create("manifest")
+	f := fs.Create("manifest")
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	err := enc.Encode(0)
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
-	enc := gob.NewEncoder(f)
-	enc.Encode(0)
 	return Manifest{fs, nil}
 }
 
@@ -48,15 +48,12 @@ func (m Manifest) cleanup() {
 }
 
 func newManifest(fs fs.Filesys) Manifest {
-	f, err := fs.Open("manifest")
-	if err != nil {
-		panic(err)
-	}
+	f := fs.Open("manifest")
 	defer f.Close()
 	dec := gob.NewDecoder(f)
 	var names []string
 	var numTables int
-	err = dec.Decode(&numTables)
+	err := dec.Decode(&numTables)
 	if err != nil {
 		panic(err)
 	}

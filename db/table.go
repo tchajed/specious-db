@@ -40,17 +40,21 @@ type SliceHandle struct {
 	Length uint32
 }
 
+func (h SliceHandle) IsValid() bool {
+return h.Length != 0
+}
+
 type tableIndex struct {
 	entries []indexEntry
 }
 
-func (i tableIndex) Get(k Key) (SliceHandle, error) {
+func (i tableIndex) Get(k Key) SliceHandle {
 	for _, e := range i.entries {
 		if e.Keys.Contains(k) {
-			return e.Handle, nil
+			return e.Handle
 		}
 	}
-	return SliceHandle{}, ErrKeyMissing{}
+	return SliceHandle{}
 }
 
 type indexEntry struct {
@@ -65,16 +69,10 @@ func (i tableIndex) Keys() KeyRange {
 }
 
 func readIndexData(fs fs.Filesys, name string) []byte {
-	indexPtrData, err := fs.ReadAt(name, -1-indexPtrOffset, indexPtrOffset)
-	if err != nil {
-		panic(err)
-	}
+	indexPtrData := fs.ReadAt(name, -1-indexPtrOffset, indexPtrOffset)
 	offset := binary.LittleEndian.Uint64(indexPtrData[0:4])
 	length := binary.LittleEndian.Uint32(indexPtrData[4:6])
-	data, err := fs.ReadAt(name, int(offset), int(length))
-	if err != nil {
-		panic(err)
-	}
+	data := fs.ReadAt(name, int(offset), int(length))
 	return data
 }
 
@@ -86,28 +84,25 @@ func NewTable(name string, fs fs.Filesys) Table {
 	return Table{name, fs, index}
 }
 
-func (t Table) Get(k Key) (Value, error) {
-	h, err := t.index.Get(k)
+func (t Table) Get(k Key) MaybeValue {
+	h := t.index.Get(k)
 	// if handle is not found in index, then key is not present in table
-	if err != nil {
-		return nil, err
+	if !h.IsValid() {
+		return NoValue
 	}
-	data, err := t.fs.ReadAt(t.name, int(h.Offset), int(h.Length))
-	if err != nil {
-		panic(err)
-	}
+	data := t.fs.ReadAt(t.name, int(h.Offset), int(h.Length))
 	dec := gob.NewDecoder(bytes.NewBuffer(data))
 	var entries []Entry
-	err = dec.Decode(&entries)
+	err := dec.Decode(&entries)
 	if err != nil {
 		panic(err)
 	}
 	for _, e := range entries {
 		if KeyEq(e.Key, k) {
-			return e.Value, nil
+			return SomeValue(e.Value)
 		}
 	}
-	return nil, ErrKeyMissing{}
+	return NoValue
 }
 
 func (t Table) Keys() KeyRange {

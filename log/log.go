@@ -45,22 +45,16 @@ type Log struct {
 const logFilename = "log"
 
 func Init(fs fs.Filesys) Log {
-	f, err := fs.Create(logFilename)
-	if err != nil {
-		panic(err)
-	}
+	f := fs.Create(logFilename)
 	return Log{f, gob.NewEncoder(f)}
 }
 
 func recoverTxns(fs fs.Filesys) (txns [][]byte) {
-	f, err := fs.Open(logFilename)
-	if err != nil {
-		panic(err)
-	}
+	f := fs.Open(logFilename)
 	dec := gob.NewDecoder(f)
 	for {
 		var data Record
-		err = dec.Decode(&data)
+		err := dec.Decode(&data)
 		if err != nil {
 			// interpret this as a partial transaction
 			return
@@ -83,10 +77,7 @@ func recoverTxns(fs fs.Filesys) (txns [][]byte) {
 
 func Recover(fs fs.Filesys) ([][]byte, Log) {
 	txns := recoverTxns(fs)
-	f, err := fs.Append(logFilename)
-	if err != nil {
-		panic(err)
-	}
+	f := fs.Append(logFilename)
 	return txns, Log{f, gob.NewEncoder(f)}
 }
 
