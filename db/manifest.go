@@ -8,6 +8,7 @@ package db
 // https://play.golang.org/p/dV5lRWTnYaU
 
 import (
+	"bytes"
 	"encoding/gob"
 	"fmt"
 
@@ -89,6 +90,21 @@ func (c tableCreator) Build() Table {
 }
 
 func (m *Manifest) InstallTable(t Table) {
+	// NOTE: we use the file system's atomic rename to create the manifest,
+	// but could attempt to use the logging implementation
+	tables := make([]string, 0, len(m.tables)+1)
+	for _, old_table := range m.tables {
+		tables = append(tables, old_table.name)
+	}
+	tables = append(tables, t.name)
+	var buf []byte
+	enc := gob.NewEncoder(bytes.NewBuffer(buf))
+	err := enc.Encode(tables)
+	if err != nil {
+		panic(err)
+	}
+	m.fs.AtomicCreateWith("manifest", buf)
+
 	m.tables = append(m.tables, t)
 }
 

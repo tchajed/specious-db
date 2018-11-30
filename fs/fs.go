@@ -32,6 +32,5 @@ type Filesys interface {
 	ReadAt(fname string, start int, length int) []byte
 	List() []string
 	Delete(fname string)
-	// will need at some point for updating manifest
-	// AtomicCreateWith(fname string, data []byte)
+	AtomicCreateWith(fname string, data []byte)
 }

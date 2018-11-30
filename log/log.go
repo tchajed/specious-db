@@ -17,6 +17,11 @@ package log
 // - Serialize application-level operations and add then as transactions.
 // - Cache all writes and expose a read API.
 // - Recover the committed transactions in an idempotent way.
+//
+// TODO: adjust this API to not use file system; should just provide a way of
+// appending and committing to a file, and recovering the transactions in the
+// file (higher-level processes recovered transactions and then clears them when
+// it's done recovering). This will at least separate concerns better.
 
 import (
 	"encoding/gob"
