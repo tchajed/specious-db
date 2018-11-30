@@ -33,10 +33,6 @@ func (db *Database) Delete(k Key) error {
 
 var _ Store = &Database{}
 
-func initManifest(fs fs.Filesys) {
-	// TODO: create manifest file pointing to no sstables
-}
-
 func Init(fs fs.Filesys) *Database {
 	initManifest(fs)
 	log := initLog(fs)

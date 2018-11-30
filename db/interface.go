@@ -32,3 +32,13 @@ type Store interface {
 	Delete(k Key) error
 	// TODO: iterator API
 }
+
+type KeyRange struct{
+	Min uint64
+	Max uint64
+}
+
+func (r KeyRange) Contains(k Key) bool {
+	// TODO: make keys uint64 so this is just an easy comparison
+	panic("not implemented")
+}
