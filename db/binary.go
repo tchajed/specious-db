@@ -40,7 +40,7 @@ func (r *SliceReader) Array16() []byte {
 }
 
 func (r *SliceReader) Entry() Entry {
-	key := r.Bytes(8)
+	key := r.Uint64()
 	value := r.Array16()
 	return Entry{key, value}
 }
@@ -105,7 +105,7 @@ func (w *BinaryWriter) Array16(b []byte) {
 }
 
 func (w *BinaryWriter) Entry(e Entry) {
-	w.write(e.Key)
+	w.Uint64(e.Key)
 	w.Array16(e.Value)
 }
 

@@ -121,20 +121,54 @@ func (t Table) Keys() KeyRange {
 
 type tableWriter struct {
 	f            fs.File
-	currentIndex indexEntry
+	w            BinaryWriter
+	currentIndex *indexEntry
 	entries      []indexEntry
 }
 
+func (w tableWriter) Offset() uint64 {
+	return uint64(w.w.BytesWritten())
+}
+
+func (w tableWriter) currentIndexLength() uint32 {
+	return uint32(w.Offset() - w.currentIndex.Handle.Offset)
+}
+
 func (w *tableWriter) Put(e Entry) {
-	w.currentEntries = append(w.currentEntries, e)
+	w.w.Entry(e)
+	if w.currentIndex == nil {
+		// initialize an index entry
+		w.currentIndex = &indexEntry{
+			SliceHandle{Offset: w.Offset()},
+			KeyRange{Min: e.Key},
+		}
+	}
+	w.currentIndex.Keys.Max = e.Key
+	// periodic flush to create some index entries
+	if w.currentIndexLength() > 100 {
+		w.flush()
+	}
+}
+
+// flush the current index entry
+func (w *tableWriter) flush() {
+	if w.currentIndex != nil {
+		w.currentIndex.Handle.Length = w.currentIndexLength()
+		w.entries = append(w.entries, *w.currentIndex)
+		w.currentIndex = nil
+	}
 }
 
 func (w tableWriter) Close() {
+	w.flush()
+	indexStart := w.Offset()
+	for _, e := range w.entries {
+		w.w.IndexEntry(e)
+	}
+	indexHandle := SliceHandle{indexStart, uint32(w.Offset() - indexStart)}
+	w.w.Handle(indexHandle)
 	err := w.f.Close()
 	if err != nil {
 		panic(err)
 	}
 }
-
-// TODO: streaming construction API that creates index entries periodically
-// (every fixed number of entry bytes maybe)

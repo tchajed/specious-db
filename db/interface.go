@@ -1,7 +1,6 @@
 package db
 
-// TODO: this needs to be uint64, bunch of things are specialized now
-type Key = []byte
+type Key = uint64
 type Value = []byte
 
 type Entry struct {
@@ -10,15 +9,7 @@ type Entry struct {
 }
 
 func KeyEq(k1 Key, k2 Key) bool {
-	if len(k1) != len(k2) {
-		return false
-	}
-	for i := range k1 {
-		if k1[i] != k2[i] {
-			return false
-		}
-	}
-	return true
+	return k1 == k2
 }
 
 type MaybeValue struct {

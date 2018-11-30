@@ -23,7 +23,7 @@ func (s *Memdb) Put(k db.Key, v db.Value) {
 func (s *Memdb) Delete(k db.Key) {
 	for i, e := range s.entries {
 		if db.KeyEq(e.Key, k) {
-			s.entries[i] = db.Entry{nil, nil}
+			s.entries[i] = db.Entry{0, nil}
 		}
 	}
 	return
