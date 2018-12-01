@@ -46,22 +46,6 @@ type KeyUpdate struct {
 	MaybeValue
 }
 
-type inOrderUpdates struct {
-	a []KeyUpdate
-}
-
-func (it inOrderUpdates) Len() int {
-	return len(it.a)
-}
-
-func (it inOrderUpdates) Less(i, j int) bool {
-	return it.a[i].Key < it.a[j].Key
-}
-
-func (it inOrderUpdates) Swap(i, j int) {
-	it.a[i], it.a[j] = it.a[j], it.a[i]
-}
-
 func (u KeyUpdate) IsPut() bool {
 	return u.MaybeValue.Present
 }
@@ -71,7 +55,7 @@ func (t entrySearchTree) Updates() []KeyUpdate {
 	for k, ku := range t.cache {
 		updates = append(updates, KeyUpdate{k, ku})
 	}
-	sort.Sort(inOrderUpdates{updates})
+	sort.Slice(updates, func(i, j int) bool { return updates[i].Key < updates[j].Key })
 	return updates
 }
 
