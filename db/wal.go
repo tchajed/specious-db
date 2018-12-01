@@ -19,7 +19,7 @@ import (
 // higher-level interface to log that supports writing operations and reading
 // from a cache of the log
 type dbLog struct {
-	log   log.Log
+	log   log.Writer
 	cache entrySearchTree
 }
 
@@ -89,23 +89,21 @@ func (l dbLog) Updates() []KeyUpdate {
 }
 
 func initLog(fs fs.Filesys) dbLog {
-	log := log.Init(fs)
+	f := fs.Create("log")
+	log := log.New(f)
 	return dbLog{log, entrySearchTree{}}
 }
 
-func recoverLog(fs fs.Filesys) dbLog {
-	txns, log := log.Recover(fs)
-	cache := entrySearchTree{}
+func recoverUpdates(fs fs.Filesys) []KeyUpdate {
+	f := fs.Open("log")
+	txns := log.RecoverTxns(f)
+	updates := make([]KeyUpdate, 0, len(txns))
 	for _, txn := range txns {
 		r := SliceReader{txn}
 		e := r.KeyUpdate()
-		if e.IsPut() {
-			cache.Put(e.Key, e.Value)
-		} else {
-			cache.Delete(e.Key)
-		}
+		updates = append(updates, e)
 	}
-	return dbLog{log, cache}
+	return updates
 }
 
 func (l dbLog) Close() {

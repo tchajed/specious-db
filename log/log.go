@@ -2,8 +2,6 @@ package log
 
 // Atomic storage for binary blobs
 //
-// TODO: this shouldn't be called log; tentatively let's call it a TxnWriter
-//
 // Supports storing binary blobs ("transactions") atomically with respect to
 // crashes.
 //
@@ -16,17 +14,13 @@ package log
 // - Create an applications-specific Log that embeds a TxnWriter.
 // - Serialize application-level operations and add then as transactions.
 // - Cache all writes and expose a read API.
-// - Recover the committed transactions in an idempotent way.
-//
-// TODO: adjust this API to not use file system; should just provide a way of
-// appending and committing to a file, and recovering the transactions in the
-// file (higher-level processes recovered transactions and then clears them when
-// it's done recovering). This will at least separate concerns better.
+// - For recovery, process all updates and commit them in a crash-safe manner,
+//   then clear the log file.
+//   TODO: truncating the log file should be a safe way to clear it
 
 import (
 	"encoding/gob"
-
-	"github.com/tchajed/specious-db/fs"
+	"io"
 )
 
 type recordType uint8
@@ -42,21 +36,34 @@ type Record struct {
 	Data []byte
 }
 
-type Log struct {
-	log fs.File
+type LogFile interface {
+	io.WriteCloser
+	Sync() error
+}
+
+type Writer struct {
+	log LogFile
 	enc *gob.Encoder
 }
 
-const logFilename = "log"
-
-func Init(fs fs.Filesys) Log {
-	f := fs.Create(logFilename)
-	return Log{f, gob.NewEncoder(f)}
+func New(f LogFile) Writer {
+	return Writer{f, gob.NewEncoder(f)}
 }
 
-func recoverTxns(fs fs.Filesys) (txns [][]byte) {
-	f := fs.Open(logFilename)
-	dec := gob.NewDecoder(f)
+func (l Writer) Add(data []byte) error {
+	l.enc.Encode(Record{DataRecord, data})
+	l.log.Sync()
+	l.enc.Encode(Record{CommitRecord, nil})
+	l.log.Sync()
+	return nil
+}
+
+func (l Writer) Close() {
+	l.log.Close()
+}
+
+func RecoverTxns(log io.Reader) (txns [][]byte) {
+	dec := gob.NewDecoder(log)
 	for {
 		var data Record
 		err := dec.Decode(&data)
@@ -78,26 +85,4 @@ func recoverTxns(fs fs.Filesys) (txns [][]byte) {
 		}
 		txns = append(txns, data.Data)
 	}
-}
-
-func Recover(fs fs.Filesys) ([][]byte, Log) {
-	txns := recoverTxns(fs)
-	// TODO: probably don't need to append to an existing log; however, need to
-	// think about how the API works since higher-level needs a call to indicate
-	// it's done recovering and log should clear the existing file and
-	// re-initialize.
-	f := fs.Append(logFilename)
-	return txns, Log{f, gob.NewEncoder(f)}
-}
-
-func (l Log) Add(data []byte) error {
-	l.enc.Encode(Record{DataRecord, data})
-	l.log.Sync()
-	l.enc.Encode(Record{CommitRecord, nil})
-	l.log.Sync()
-	return nil
-}
-
-func (l Log) Close() {
-	l.log.Close()
 }

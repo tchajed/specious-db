@@ -119,6 +119,9 @@ func (m *Manifest) InstallTable(t Table) {
 	m.tables = append(m.tables, t)
 }
 
+// TODO: might make sure sense for manifest to just create a table from an
+// iterator over updates (that function can subsume tableCreator and maybe still
+// use a local tableWriter)
 func (m *Manifest) NewTable() tableCreator {
 	// NOTE: need to guarantee that table IDs increase and we know about all the
 	// tables for this name to be fresh
