@@ -4,8 +4,12 @@ package db
 //
 // Provides a mini key-value store on top of a write-ahead log that only serves
 // Gets from the log (missing keys may have been migrated to SSTables)
+//
+// Log records are KeyUpdates, as encoded/decoded by binary.go.
+// TODO: extend record format to batches of operations.
 
 import (
+	"bytes"
 	"sort"
 
 	"github.com/tchajed/specious-db/fs"
@@ -63,13 +67,20 @@ func (l dbLog) Get(k Key) MaybeValue {
 	return l.cache.Get(k)
 }
 
+func (l dbLog) logUpdate(e KeyUpdate) {
+	var b bytes.Buffer
+	w := newWriter(&b)
+	w.KeyUpdate(e)
+	l.log.Add(b.Bytes())
+}
+
 func (l dbLog) Put(k Key, v Value) {
-	// TODO: log a put operation
+	l.logUpdate(KeyUpdate{k, SomeValue(v)})
 	l.cache.Put(k, v)
 }
 
 func (l dbLog) Delete(k Key) {
-	// TODO: log a delete operation
+	l.logUpdate(KeyUpdate{k, NoValue})
 	l.cache.Delete(k)
 }
 
@@ -85,8 +96,15 @@ func initLog(fs fs.Filesys) dbLog {
 func recoverLog(fs fs.Filesys) dbLog {
 	txns, log := log.Recover(fs)
 	cache := entrySearchTree{}
-	// TODO: initialize cache by processing txns
-	var _ = txns
+	for _, txn := range txns {
+		r := SliceReader{txn}
+		e := r.KeyUpdate()
+		if e.IsPut() {
+			cache.Put(e.Key, e.Value)
+		} else {
+			cache.Delete(e.Key)
+		}
+	}
 	return dbLog{log, cache}
 }
 
