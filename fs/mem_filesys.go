@@ -39,11 +39,16 @@ func (f memFile) Reader() fileReader {
 	return fileReader{bytes.NewBuffer(data)}
 }
 
-func (fs memFilesys) Open(fname string) io.ReadCloser {
-	if fs.m[fname] == nil {
-		panic(fmt.Errorf("attempt to Open non-existent file %s", fname))
+func (fs memFilesys) get(fname string) *memFile {
+	f, ok := fs.m[fname]
+	if !ok {
+		panic(fmt.Errorf("attempt to use non-existent file %s", fname))
 	}
-	return fs.m[fname].Reader()
+	return f
+}
+
+func (fs memFilesys) Open(fname string) io.ReadCloser {
+	return fs.get(fname).Reader()
 }
 
 func (fs memFilesys) Create(fname string) File {
@@ -57,18 +62,11 @@ func (fs memFilesys) Create(fname string) File {
 }
 
 func (fs memFilesys) Append(fname string) File {
-	f, ok := fs.m[fname]
-	if !ok {
-		panic(fmt.Errorf("attempt to Append to non-existent file %s", fname))
-	}
-	return f
+	return fs.get(fname)
 }
 
 func (fs memFilesys) ReadAt(fname string, start int, length int) []byte {
-	f, ok := fs.m[fname]
-	if !ok {
-		panic(fmt.Errorf("attempt to ReadAt from non-existent file %s", fname))
-	}
+	f := fs.get(fname)
 	if start >= 0 {
 		return f.data[start : start+length]
 	}
@@ -85,10 +83,7 @@ func (fs memFilesys) List() []string {
 }
 
 func (fs memFilesys) Delete(fname string) {
-	_, ok := fs.m[fname]
-	if !ok {
-		panic(fmt.Errorf("attempt to Delete non-existent file %s", fname))
-	}
+	_ = fs.get(fname)
 	delete(fs.m, fname)
 }
 
