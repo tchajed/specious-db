@@ -48,6 +48,18 @@ func (m Manifest) cleanup() {
 	}
 }
 
+func (m Manifest) Get(k Key) MaybeValue {
+	// NOTE: need to traverse in reverse _chronological_ order so later updates overwrite earlier ones
+	// TODO: add a search index over table ranges to efficiently find table
+	for i := len(m.tables) - 1; i >= 0; i-- {
+		mv := m.tables[i].Get(k)
+		if mv.Present {
+			return mv
+		}
+	}
+	return NoValue
+}
+
 func newManifest(fs fs.Filesys) Manifest {
 	f := fs.Open("manifest")
 	defer f.Close()

@@ -12,9 +12,7 @@ type Database struct {
 
 func (db *Database) Get(k Key) MaybeValue {
 	return db.log.Get(k).OrElse(func() MaybeValue {
-		// not found in log
-		// TODO: search SSTables via manifest
-		panic("sstables not implemented")
+		return db.mf.Get(k)
 	})
 }
 
