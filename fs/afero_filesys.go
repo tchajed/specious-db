@@ -59,7 +59,7 @@ func (fs aferoFs) Create(fname string) File {
 }
 
 func (fs aferoFs) List() []string {
-	names, err := afero.Glob(fs.fs, "/*")
+	names, err := afero.Glob(fs.fs, abs("*"))
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +89,7 @@ func (fs aferoFs) AtomicCreateWith(fname string, data []byte) {
 }
 
 func deleteTmpFiles(fs afero.Fs) {
-	tmpFiles, err := afero.Glob(fs, "/*.tmp")
+	tmpFiles, err := afero.Glob(fs, abs("*.tmp"))
 	if err != nil {
 		panic(err)
 	}
