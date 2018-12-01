@@ -29,14 +29,27 @@ func (f *memFile) Sync() error {
 
 type fileReader struct {
 	io.Reader
+	buf []byte
 }
 
 func (r fileReader) Close() error { return nil }
 
+func (r fileReader) ReadAt(p []byte, off int64) (n int, err error) {
+	if int(off)+len(p) > len(r.buf) {
+		panic("ReadAt out-of-bounds")
+	}
+	copy(p, r.buf[int(off):int(off)+len(p)])
+	return len(p), nil
+}
+
+func (r fileReader) Size() int {
+	return len(r.buf)
+}
+
 func (f memFile) Reader() fileReader {
 	data := make([]byte, len(f.data))
 	copy(data, f.data)
-	return fileReader{bytes.NewBuffer(data)}
+	return fileReader{Reader: bytes.NewBuffer(data), buf: data}
 }
 
 func (fs memFilesys) get(fname string) *memFile {
@@ -47,7 +60,7 @@ func (fs memFilesys) get(fname string) *memFile {
 	return f
 }
 
-func (fs memFilesys) Open(fname string) io.ReadCloser {
+func (fs memFilesys) Open(fname string) ReadFile {
 	return fs.get(fname).Reader()
 }
 
@@ -63,15 +76,6 @@ func (fs memFilesys) Create(fname string) File {
 
 func (fs memFilesys) Append(fname string) File {
 	return fs.get(fname)
-}
-
-func (fs memFilesys) ReadAt(fname string, start int, length int) []byte {
-	f := fs.get(fname)
-	if start >= 0 {
-		return f.data[start : start+length]
-	}
-	startIdx := len(f.data) - (-start + 1)
-	return f.data[startIdx : startIdx+length]
 }
 
 func (fs memFilesys) List() []string {

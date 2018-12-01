@@ -9,6 +9,12 @@ type File interface {
 	Sync() error
 }
 
+type ReadFile interface {
+	Size() int
+	io.ReaderAt
+	io.ReadCloser
+}
+
 // Filesys is a database-specific API for accessing the file system.
 //
 // Note that an instance of this interface only exposes a single directory
@@ -22,14 +28,8 @@ type File interface {
 //   file; this should not wrap to the beginning of the file).
 // - Delete: fname should exist
 type Filesys interface {
-	Open(fname string) io.ReadCloser
+	Open(fname string) ReadFile
 	Create(fname string) File
-	// like create but append to an existing file
-	Append(fname string) File
-	// read a fixed part of a file
-	// TODO: end up calling this many times when we could probably cache the
-	// open file
-	ReadAt(fname string, start int, length int) []byte
 	List() []string
 	Delete(fname string)
 	AtomicCreateWith(fname string, data []byte)

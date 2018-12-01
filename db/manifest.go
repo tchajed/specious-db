@@ -78,7 +78,7 @@ func newManifest(fs fs.Filesys) Manifest {
 	}
 	tables := make([]Table, 0, len(idents))
 	for _, i := range idents {
-		tables = append(tables, NewTable(i, fs))
+		tables = append(tables, OpenTable(i, fs))
 	}
 	m := Manifest{fs, tables}
 	m.cleanup()
@@ -97,7 +97,7 @@ func (c tableCreator) Put(e KeyUpdate) {
 
 func (c tableCreator) Build() Table {
 	entries := c.w.Close()
-	return Table{c.ident, c.m.fs, newTableIndex(entries)}
+	return NewTable(c.ident, c.m.fs, entries)
 }
 
 func (m *Manifest) InstallTable(t Table) {

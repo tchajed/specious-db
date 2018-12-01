@@ -17,12 +17,22 @@ func (fs osFilesys) path(name string) string {
 	return path.Join(fs.basedir, name)
 }
 
-func (fs osFilesys) Open(fname string) io.ReadCloser {
+type file struct{ *os.File }
+
+func (f file) Size() int {
+	st, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	return int(st.Size())
+}
+
+func (fs osFilesys) Open(fname string) ReadFile {
 	f, err := os.Open(fs.path(fname))
 	if err != nil {
 		panic(err)
 	}
-	return f
+	return file{f}
 }
 
 func (fs osFilesys) Create(fname string) File {
@@ -31,42 +41,6 @@ func (fs osFilesys) Create(fname string) File {
 		panic(err)
 	}
 	return f
-}
-
-func (fs osFilesys) Append(fname string) File {
-	f, err := os.OpenFile(fs.path(fname), os.O_APPEND|os.O_WRONLY, 0)
-	if err != nil {
-		panic(err)
-	}
-	return f
-}
-
-func (fs osFilesys) ReadAt(fname string, start int, length int) []byte {
-	f, err := os.Open(fs.path(fname))
-	if err != nil {
-		panic(err)
-	}
-	if start > 0 {
-		_, err = f.Seek(int64(start), 0)
-		if err != nil {
-			panic(err)
-		}
-	} else if start < 0 {
-		// TODO: figure out any off-by-one errors
-		_, err = f.Seek(int64(-start+1), 2)
-		if err != nil {
-			panic(err)
-		}
-	}
-	b := make([]byte, length)
-	n, err := f.Read(b)
-	if n < length {
-		panic("short ReadAt")
-	}
-	if err != nil {
-		panic(err)
-	}
-	return b
 }
 
 func (fs osFilesys) List() []string {

@@ -31,7 +31,7 @@ import (
 
 type Table struct {
 	ident uint32
-	fs    fs.Filesys
+	f     fs.ReadFile
 	index tableIndex
 }
 
@@ -84,11 +84,13 @@ func (i tableIndex) Keys() KeyRange {
 }
 
 // TODO: standardize on fs goes last
-func readIndexData(fs fs.Filesys, ident uint32) []byte {
-	indexPtrData := fs.ReadAt(identToName(ident), -1-indexPtrOffset, indexPtrOffset)
+func readIndexData(f fs.ReadFile) []byte {
+	indexPtrData := make([]byte, indexPtrOffset)
+	f.ReadAt(indexPtrData, int64(f.Size()-indexPtrOffset))
 	offset := binary.LittleEndian.Uint64(indexPtrData[0:4])
 	length := binary.LittleEndian.Uint32(indexPtrData[4:6])
-	data := fs.ReadAt(identToName(ident), int(offset), int(length))
+	data := make([]byte, length)
+	f.ReadAt(data, int64(offset))
 	return data
 }
 
@@ -103,14 +105,20 @@ func (w *BinaryWriter) IndexEntry(e indexEntry) {
 	w.KeyRange(e.Keys)
 }
 
-func NewTable(ident uint32, fs fs.Filesys) Table {
-	indexData := readIndexData(fs, ident)
+func NewTable(ident uint32, fs fs.Filesys, entries []indexEntry) Table {
+	f := fs.Open(identToName(ident))
+	return Table{ident, f, newTableIndex(entries)}
+}
+
+func OpenTable(ident uint32, fs fs.Filesys) Table {
+	f := fs.Open(identToName(ident))
+	indexData := readIndexData(f)
 	var index tableIndex
 	r := SliceReader{indexData}
 	for r.RemainingBytes() > 0 {
 		index.entries = append(index.entries, r.IndexEntry())
 	}
-	return Table{ident, fs, index}
+	return Table{ident, f, index}
 }
 
 func (t Table) Get(k Key) MaybeValue {
@@ -119,7 +127,8 @@ func (t Table) Get(k Key) MaybeValue {
 	if !h.IsValid() {
 		return NoValue
 	}
-	data := t.fs.ReadAt(t.Name(), int(h.Offset), int(h.Length))
+	data := make([]byte, h.Length)
+	t.f.ReadAt(data, int64(h.Offset))
 	r := SliceReader{data}
 	for r.RemainingBytes() > 0 {
 		e := r.KeyUpdate()
