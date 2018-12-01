@@ -22,6 +22,18 @@ func (f readFile) Size() int {
 	return int(st.Size())
 }
 
+func (f readFile) ReadAt(offset int, length int) []byte {
+	p := make([]byte, length)
+	n, err := f.File.ReadAt(p, int64(offset))
+	if n != len(p) {
+		panic(fmt.Errorf("short ReadAt of %d bytes for %s", n, f.File.Name()))
+	}
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
 func abs(fname string) string {
 	return fmt.Sprintf("/%s", fname)
 }
