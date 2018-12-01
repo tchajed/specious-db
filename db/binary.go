@@ -45,6 +45,16 @@ func (r *SliceReader) Entry() Entry {
 	return Entry{key, value}
 }
 
+func (r *SliceReader) KeyUpdate() KeyUpdate {
+	key := r.Uint64()
+	length := r.Uint16()
+	if length == 0xffff {
+		return KeyUpdate{key, NoValue}
+	}
+	value := r.Bytes(int(length))
+	return KeyUpdate{key, SomeValue(value)}
+}
+
 func (r *SliceReader) Handle() SliceHandle {
 	offset := r.Uint64()
 	length := r.Uint32()
@@ -111,6 +121,15 @@ func (w *BinaryWriter) Array16(b []byte) {
 func (w *BinaryWriter) Entry(e Entry) {
 	w.Uint64(e.Key)
 	w.Array16(e.Value)
+}
+
+func (w *BinaryWriter) KeyUpdate(e KeyUpdate) {
+	w.Uint64(e.Key)
+	if e.IsPut() {
+		w.Array16(e.Value)
+	} else {
+		w.Uint16(0xffff)
+	}
 }
 
 func (w *BinaryWriter) Handle(h SliceHandle) {

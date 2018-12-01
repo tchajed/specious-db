@@ -112,8 +112,8 @@ func (t Table) Get(k Key) MaybeValue {
 	data := t.fs.ReadAt(t.name, int(h.Offset), int(h.Length))
 	r := SliceReader{data}
 	for r.RemainingBytes() > 0 {
-		e := r.Entry()
-		if KeyEq(e.Key, k) {
+		e := r.KeyUpdate()
+		if e.IsPut() && KeyEq(e.Key, k) {
 			return SomeValue(e.Value)
 		}
 	}
@@ -148,16 +148,19 @@ func (w tableWriter) currentIndexLength() uint32 {
 	return uint32(w.Offset() - w.currentIndex.Handle.Offset)
 }
 
-func (w *tableWriter) Put(e Entry) {
-	w.w.Entry(e)
+func (w *tableWriter) Put(e KeyUpdate) {
+	w.w.KeyUpdate(e)
+}
+
+func (w *tableWriter) updateIndex(k Key) {
 	if w.currentIndex == nil {
 		// initialize an index entry
 		w.currentIndex = &indexEntry{
 			SliceHandle{Offset: w.Offset()},
-			KeyRange{Min: e.Key},
+			KeyRange{Min: k},
 		}
 	}
-	w.currentIndex.Keys.Max = e.Key
+	w.currentIndex.Keys.Max = k
 	// periodic flush to create some index entries
 	if w.currentIndexLength() > 100 {
 		w.flush()

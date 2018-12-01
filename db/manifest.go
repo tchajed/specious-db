@@ -80,7 +80,7 @@ type tableCreator struct {
 	m    *Manifest
 }
 
-func (c tableCreator) Put(e Entry) {
+func (c tableCreator) Put(e KeyUpdate) {
 	c.w.Put(e)
 }
 

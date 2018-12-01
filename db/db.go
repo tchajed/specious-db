@@ -41,10 +41,9 @@ func New(fs fs.Filesys) *Database {
 }
 
 func (db *Database) CompactLog() {
-	it := db.log.Stream()
+	updates := db.log.Updates()
 	t := db.mf.NewTable(0)
-	for !it.IsDone() {
-		e := it.Next()
+	for _, e := range updates {
 		t.Put(e)
 	}
 	db.mf.InstallTable(t.Build())
