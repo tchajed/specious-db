@@ -42,7 +42,31 @@ func (fs osFilesys) Append(fname string) File {
 }
 
 func (fs osFilesys) ReadAt(fname string, start int, length int) []byte {
-	panic("not implemented")
+	f, err := os.Open(fs.path(fname))
+	if err != nil {
+		panic(err)
+	}
+	if start > 0 {
+		_, err = f.Seek(int64(start), 0)
+		if err != nil {
+			panic(err)
+		}
+	} else if start < 0 {
+		// TODO: figure out any off-by-one errors
+		_, err = f.Seek(int64(-start+1), 2)
+		if err != nil {
+			panic(err)
+		}
+	}
+	b := make([]byte, length)
+	n, err := f.Read(b)
+	if n < length {
+		panic("short ReadAt")
+	}
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 func (fs osFilesys) List() []string {
