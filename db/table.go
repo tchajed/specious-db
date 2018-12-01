@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -29,9 +30,17 @@ import (
 // what ranges need to be parsed.
 
 type Table struct {
-	name  string
+	ident uint32
 	fs    fs.Filesys
 	index tableIndex
+}
+
+func identToName(ident uint32) string {
+	return fmt.Sprintf("table-%06d.ldb", ident)
+}
+
+func (t Table) Name() string {
+	return identToName(t.ident)
 }
 
 const indexPtrOffset = 8 + 4
@@ -74,11 +83,12 @@ func (i tableIndex) Keys() KeyRange {
 	return KeyRange{first.Min, last.Max}
 }
 
-func readIndexData(fs fs.Filesys, name string) []byte {
-	indexPtrData := fs.ReadAt(name, -1-indexPtrOffset, indexPtrOffset)
+// TODO: standardize on fs goes last
+func readIndexData(fs fs.Filesys, ident uint32) []byte {
+	indexPtrData := fs.ReadAt(identToName(ident), -1-indexPtrOffset, indexPtrOffset)
 	offset := binary.LittleEndian.Uint64(indexPtrData[0:4])
 	length := binary.LittleEndian.Uint32(indexPtrData[4:6])
-	data := fs.ReadAt(name, int(offset), int(length))
+	data := fs.ReadAt(identToName(ident), int(offset), int(length))
 	return data
 }
 
@@ -93,14 +103,14 @@ func (w *BinaryWriter) IndexEntry(e indexEntry) {
 	w.KeyRange(e.Keys)
 }
 
-func NewTable(name string, fs fs.Filesys) Table {
-	indexData := readIndexData(fs, name)
+func NewTable(ident uint32, fs fs.Filesys) Table {
+	indexData := readIndexData(fs, ident)
 	var index tableIndex
 	r := SliceReader{indexData}
 	for r.RemainingBytes() > 0 {
 		index.entries = append(index.entries, r.IndexEntry())
 	}
-	return Table{name, fs, index}
+	return Table{ident, fs, index}
 }
 
 func (t Table) Get(k Key) MaybeValue {
@@ -109,7 +119,7 @@ func (t Table) Get(k Key) MaybeValue {
 	if !h.IsValid() {
 		return NoValue
 	}
-	data := t.fs.ReadAt(t.name, int(h.Offset), int(h.Length))
+	data := t.fs.ReadAt(t.Name(), int(h.Offset), int(h.Length))
 	r := SliceReader{data}
 	for r.RemainingBytes() > 0 {
 		e := r.KeyUpdate()

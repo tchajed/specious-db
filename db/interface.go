@@ -44,6 +44,5 @@ type KeyRange struct {
 }
 
 func (r KeyRange) Contains(k Key) bool {
-	// TODO: make keys uint64 so this is just an easy comparison
-	panic("not implemented")
+	return r.Min <= k && k <= r.Max
 }

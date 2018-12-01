@@ -42,7 +42,7 @@ func New(fs fs.Filesys) *Database {
 
 func (db *Database) CompactLog() {
 	updates := db.log.Updates()
-	t := db.mf.NewTable(0)
+	t := db.mf.NewTable()
 	for _, e := range updates {
 		t.Put(e)
 	}

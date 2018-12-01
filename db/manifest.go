@@ -10,7 +10,6 @@ package db
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -31,9 +30,9 @@ func initManifest(fs fs.Filesys) Manifest {
 	return Manifest{fs, nil}
 }
 
-func (m Manifest) isValidTable(name string) bool {
+func (m Manifest) isKnownTable(name string) bool {
 	for _, t := range m.tables {
-		if name == t.name {
+		if name == t.Name() {
 			return true
 		}
 	}
@@ -42,7 +41,7 @@ func (m Manifest) isValidTable(name string) bool {
 
 func (m Manifest) cleanup() {
 	for _, f := range m.fs.List() {
-		if f == "log" || f == "manifest" || m.isValidTable(f) {
+		if f == "log" || f == "manifest" || m.isKnownTable(f) {
 			continue
 		}
 		m.fs.Delete(f)
@@ -53,21 +52,21 @@ func newManifest(fs fs.Filesys) Manifest {
 	f := fs.Open("manifest")
 	defer f.Close()
 	dec := gob.NewDecoder(f)
-	var names []string
+	var idents []uint32
 	var numTables int
 	err := dec.Decode(&numTables)
 	if err != nil {
 		panic(err)
 	}
 	if numTables > 0 {
-		err = dec.Decode(&names)
+		err = dec.Decode(&idents)
 		if err != nil {
 			panic(err)
 		}
 	}
-	tables := make([]Table, 0, len(names))
-	for _, n := range names {
-		tables = append(tables, NewTable(n, fs))
+	tables := make([]Table, 0, len(idents))
+	for _, i := range idents {
+		tables = append(tables, NewTable(i, fs))
 	}
 	m := Manifest{fs, tables}
 	m.cleanup()
@@ -75,9 +74,9 @@ func newManifest(fs fs.Filesys) Manifest {
 }
 
 type tableCreator struct {
-	w    tableWriter
-	name string
-	m    *Manifest
+	w     tableWriter
+	ident uint32
+	m     *Manifest
 }
 
 func (c tableCreator) Put(e KeyUpdate) {
@@ -86,17 +85,17 @@ func (c tableCreator) Put(e KeyUpdate) {
 
 func (c tableCreator) Build() Table {
 	entries := c.w.Close()
-	return Table{c.name, c.m.fs, newTableIndex(entries)}
+	return Table{c.ident, c.m.fs, newTableIndex(entries)}
 }
 
 func (m *Manifest) InstallTable(t Table) {
 	// NOTE: we use the file system's atomic rename to create the manifest,
 	// but could attempt to use the logging implementation
-	tables := make([]string, 0, len(m.tables)+1)
+	tables := make([]uint32, 0, len(m.tables)+1)
 	for _, old_table := range m.tables {
-		tables = append(tables, old_table.name)
+		tables = append(tables, old_table.ident)
 	}
-	tables = append(tables, t.name)
+	tables = append(tables, t.ident)
 	var buf []byte
 	enc := gob.NewEncoder(bytes.NewBuffer(buf))
 	err := enc.Encode(tables)
@@ -108,11 +107,12 @@ func (m *Manifest) InstallTable(t Table) {
 	m.tables = append(m.tables, t)
 }
 
-func (m *Manifest) NewTable(level int) tableCreator {
-	id := 0 // TODO: fresh id
-	name := fmt.Sprintf("table-l%d-%d.ldb", level, id)
-	f := m.fs.Create(name)
-	return tableCreator{newTableWriter(f), name, m}
+func (m *Manifest) NewTable() tableCreator {
+	// NOTE: need to guarantee that table IDs increase and we know about all the
+	// tables for this name to be fresh
+	id := m.tables[len(m.tables)-1].ident + 1
+	f := m.fs.Create(identToName(id))
+	return tableCreator{newTableWriter(f), id, m}
 }
 
 // TODO: implement compaction
