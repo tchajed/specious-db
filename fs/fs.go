@@ -11,6 +11,10 @@ type File interface {
 
 type ReadFile interface {
 	Size() int
+	// TODO: we use ReadAt with a bunch of restrictions, maybe should wrap it to
+	// simplify usage (just take an offset and length as ints and allocate the
+	// bytes; caller must ensure everything is in-bounds, no io.EOF or
+	// truncation)
 	io.ReaderAt
 	io.ReadCloser
 }
