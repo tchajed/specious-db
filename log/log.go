@@ -26,12 +26,12 @@ import (
 type recordType uint8
 
 const (
-	InvalidRecord recordType = iota
-	DataRecord
-	CommitRecord
+	invalidRecord recordType = iota
+	dataRecord
+	commitRecord
 )
 
-type Record struct {
+type record struct {
 	Type recordType
 	Data []byte
 }
@@ -51,9 +51,9 @@ func New(f LogFile) Writer {
 }
 
 func (l Writer) Add(data []byte) error {
-	l.enc.Encode(Record{DataRecord, data})
+	l.enc.Encode(record{dataRecord, data})
 	l.log.Sync()
-	l.enc.Encode(Record{CommitRecord, nil})
+	l.enc.Encode(record{commitRecord, nil})
 	l.log.Sync()
 	return nil
 }
@@ -65,22 +65,22 @@ func (l Writer) Close() {
 func RecoverTxns(log io.Reader) (txns [][]byte) {
 	dec := gob.NewDecoder(log)
 	for {
-		var data Record
+		var data record
 		err := dec.Decode(&data)
 		if err != nil {
 			// interpret this as a partial transaction
 			return
 		}
-		if data.Type != DataRecord {
+		if data.Type != dataRecord {
 			panic("expected data record")
 		}
-		var commit Record
+		var commit record
 		err = dec.Decode(&commit)
 		if err != nil {
 			// data record was not successfully committed, so ignore it
 			return
 		}
-		if commit.Type != CommitRecord {
+		if commit.Type != commitRecord {
 			panic("expected commit record")
 		}
 		txns = append(txns, data.Data)
