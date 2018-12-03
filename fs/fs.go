@@ -33,4 +33,5 @@ type Filesys interface {
 	List() []string
 	Delete(fname string)
 	AtomicCreateWith(fname string, data []byte)
+	Debug()
 }
