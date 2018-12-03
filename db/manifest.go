@@ -86,7 +86,7 @@ func newManifest(fs fs.Filesys) Manifest {
 }
 
 type tableCreator struct {
-	w     tableWriter
+	w     *tableWriter
 	ident uint32
 	m     *Manifest
 }
@@ -125,7 +125,10 @@ func (m *Manifest) InstallTable(t Table) {
 func (m *Manifest) NewTable() tableCreator {
 	// NOTE: need to guarantee that table IDs increase and we know about all the
 	// tables for this name to be fresh
-	id := m.tables[len(m.tables)-1].ident + 1
+	id := uint32(1)
+	if len(m.tables) > 0 {
+		id = m.tables[len(m.tables)-1].ident + 1
+	}
 	f := m.fs.Create(identToName(id))
 	return tableCreator{newTableWriter(f), id, m}
 }

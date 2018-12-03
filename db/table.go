@@ -147,8 +147,8 @@ type tableWriter struct {
 	entries      []indexEntry
 }
 
-func newTableWriter(f fs.File) tableWriter {
-	return tableWriter{
+func newTableWriter(f fs.File) *tableWriter {
+	return &tableWriter{
 		f:            f,
 		w:            newWriter(f),
 		currentIndex: nil,
@@ -165,18 +165,16 @@ func (w tableWriter) currentIndexLength() uint32 {
 }
 
 func (w *tableWriter) Put(e KeyUpdate) {
+	start := w.Offset()
 	w.w.KeyUpdate(e)
-}
-
-func (w *tableWriter) updateIndex(k Key) {
 	if w.currentIndex == nil {
 		// initialize an index entry
 		w.currentIndex = &indexEntry{
-			SliceHandle{Offset: w.Offset()},
-			KeyRange{Min: k},
+			SliceHandle{Offset: start},
+			KeyRange{Min: e.Key},
 		}
 	}
-	w.currentIndex.Keys.Max = k
+	w.currentIndex.Keys.Max = e.Key
 	// periodic flush to create some index entries
 	if w.currentIndexLength() > 100 {
 		w.flush()
@@ -194,6 +192,9 @@ func (w *tableWriter) flush() {
 
 func (w tableWriter) Close() []indexEntry {
 	w.flush()
+	if len(w.entries) == 0 {
+		panic("table has no values")
+	}
 	indexStart := w.Offset()
 	for _, e := range w.entries {
 		w.w.IndexEntry(e)
