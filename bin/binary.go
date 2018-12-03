@@ -76,6 +76,11 @@ func (r *Decoder) Uint16() uint16 {
 	return binary.LittleEndian.Uint16(r.Bytes(2))
 }
 
+// Uint8 decodes a uint8
+func (r *Decoder) Uint8() uint8 {
+	return r.Bytes(1)[0]
+}
+
 // Array16 decodes an array prefixed with a 16-byte length.
 func (r *Decoder) Array16() []byte {
 	length := r.Uint16()
@@ -102,6 +107,11 @@ func (w *Encoder) Uint16(v uint16) {
 	b := make([]byte, 2)
 	binary.LittleEndian.PutUint16(b, v)
 	w.Bytes(b)
+}
+
+// Uint8 encodes a uint8
+func (w *Encoder) Uint8(b uint8) {
+	w.Bytes([]byte{b})
 }
 
 // Array16 encodes an array prefixed with a 16-byte length.

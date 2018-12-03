@@ -10,6 +10,7 @@ func TestLogEmpty(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	f, _ := fs.Create("log")
 	f.Close()
+	f, _ = fs.Open("log")
 	txns := RecoverTxns(f)
 	assert.Empty(txns, "empty file should be an empty log")
 }
@@ -67,9 +68,7 @@ func TestLogEmptyTxn(t *testing.T) {
 	txns := recoverLog(fs)
 	assert.Equal([][]byte{
 		{1},
-		// note that due to gob, this is nil instead of an empty byte slice
-		// (though these are functionally identical in Go for the most part)
-		nil,
+		{},
 		{4},
 	}, txns, "should recover an empty txn")
 }

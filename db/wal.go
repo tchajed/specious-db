@@ -101,6 +101,7 @@ func initLog(fs fs.Filesys) dbLog {
 func recoverUpdates(fs fs.Filesys) []KeyUpdate {
 	f := fs.Open("log")
 	txns := log.RecoverTxns(f)
+	f.Close()
 	updates := make([]KeyUpdate, 0, len(txns))
 	for _, txn := range txns {
 		r := newDecoder(txn)

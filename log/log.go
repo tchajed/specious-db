@@ -19,22 +19,17 @@ package log
 //   TODO: truncating the log file should be a safe way to clear it
 
 import (
-	"encoding/gob"
 	"io"
+	"io/ioutil"
+
+	"github.com/tchajed/specious-db/bin"
 )
 
-type recordType uint8
-
 const (
-	invalidRecord recordType = iota
+	invalidRecord uint8 = iota
 	dataRecord
 	commitRecord
 )
-
-type record struct {
-	Type recordType
-	Data []byte
-}
 
 type LogFile interface {
 	io.WriteCloser
@@ -43,18 +38,17 @@ type LogFile interface {
 
 type Writer struct {
 	log LogFile
-	enc *gob.Encoder
+	enc *bin.Encoder
 }
 
 func New(f LogFile) Writer {
-	return Writer{f, gob.NewEncoder(f)}
+	return Writer{f, bin.NewEncoder(f)}
 }
 
 func (l Writer) Add(data []byte) error {
-	l.enc.Encode(record{dataRecord, data})
-	l.log.Sync()
-	l.enc.Encode(record{commitRecord, nil})
-	l.log.Sync()
+	l.enc.Uint8(dataRecord)
+	l.enc.Array16(data)
+	l.enc.Uint8(commitRecord)
 	return nil
 }
 
@@ -63,26 +57,35 @@ func (l Writer) Close() {
 }
 
 func RecoverTxns(log io.Reader) (txns [][]byte) {
-	dec := gob.NewDecoder(log)
+	buf, err := ioutil.ReadAll(log)
+	if err != nil {
+		panic(err)
+	}
+	dec := bin.NewDecoder(buf)
 	for {
-		var data record
-		err := dec.Decode(&data)
-		if err != nil {
-			// interpret this as a partial transaction
+		// here we decode as much as possible, stopping early if we run out of
+		// bytes (unfortunately the binary decoding library doesn't have good
+		// support for stopping early and will panic if there aren't enough
+		// bytes)
+		if dec.RemainingBytes() == 0 {
 			return
 		}
-		if data.Type != dataRecord {
+		ty := dec.Uint8()
+		if ty != dataRecord {
 			panic("expected data record")
 		}
-		var commit record
-		err = dec.Decode(&commit)
-		if err != nil {
-			// data record was not successfully committed, so ignore it
+		len := dec.Uint16()
+		if dec.RemainingBytes() < int(len) {
 			return
 		}
-		if commit.Type != commitRecord {
+		data := dec.Bytes(int(len))
+		if dec.RemainingBytes() == 0 {
+			return
+		}
+		ty = dec.Uint8()
+		if ty != commitRecord {
 			panic("expected commit record")
 		}
-		txns = append(txns, data.Data)
+		txns = append(txns, data)
 	}
 }
