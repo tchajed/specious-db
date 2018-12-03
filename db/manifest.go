@@ -56,7 +56,10 @@ func (m Manifest) Get(k Key) MaybeValue {
 	for i := len(m.tables) - 1; i >= 0; i-- {
 		mv := m.tables[i].Get(k)
 		if mv.Present {
-			return mv
+			if mv.IsPut() {
+				return SomeValue(mv.Value)
+			}
+			return NoValue
 		}
 	}
 	return NoValue

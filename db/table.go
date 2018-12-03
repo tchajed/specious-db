@@ -119,21 +119,27 @@ func OpenTable(ident uint32, fs fs.Filesys) Table {
 	return Table{ident, f, index}
 }
 
-func (t Table) Get(k Key) MaybeValue {
+type MaybeKeyUpdate struct {
+	Present bool
+	KeyUpdate
+}
+
+func (t Table) Get(k Key) MaybeKeyUpdate {
 	h := t.index.Get(k)
 	// if handle is not found in index, then key is not present in table
 	if !h.IsValid() {
-		return NoValue
+		return MaybeKeyUpdate{false, KeyUpdate{}}
 	}
 	data := t.f.ReadAt(int(h.Offset), int(h.Length))
 	r := SliceReader{data}
 	for r.RemainingBytes() > 0 {
 		e := r.KeyUpdate()
-		if e.IsPut() && KeyEq(e.Key, k) {
-			return SomeValue(e.Value)
+		if e.Key == k {
+			return MaybeKeyUpdate{true, e}
 		}
 	}
-	return NoValue
+	// key turned out to be missing
+	return MaybeKeyUpdate{false, KeyUpdate{}}
 }
 
 func (t Table) Keys() KeyRange {
