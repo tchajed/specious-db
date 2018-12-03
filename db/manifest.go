@@ -99,7 +99,7 @@ func (c tableCreator) Put(e KeyUpdate) {
 
 func (c tableCreator) Build() Table {
 	entries := c.w.Close()
-	return NewTable(c.ident, c.m.fs, entries)
+	return NewTable(c.ident, entries, c.m.fs)
 }
 
 func (m *Manifest) InstallTable(t Table) {

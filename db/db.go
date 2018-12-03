@@ -5,9 +5,9 @@ import (
 )
 
 type Database struct {
+	fs  fs.Filesys
 	log dbLog
 	mf  Manifest
-	fs  fs.Filesys
 }
 
 func (db *Database) Get(k Key) MaybeValue {
@@ -29,7 +29,7 @@ var _ Store = &Database{}
 func Init(fs fs.Filesys) *Database {
 	mf := initManifest(fs)
 	log := initLog(fs)
-	return &Database{log, mf, fs}
+	return &Database{fs, log, mf}
 }
 
 func New(fs fs.Filesys) *Database {
@@ -48,7 +48,7 @@ func New(fs fs.Filesys) *Database {
 	// truncating it
 	fs.Delete("log")
 	log := initLog(fs)
-	return &Database{log, mf, fs}
+	return &Database{fs, log, mf}
 }
 
 func (db *Database) compactLog() {

@@ -83,7 +83,6 @@ func (i tableIndex) Keys() KeyRange {
 	return KeyRange{first.Min, last.Max}
 }
 
-// TODO: standardize on fs goes last
 func readIndexData(f fs.ReadFile) []byte {
 	indexPtrData := f.ReadAt(f.Size()-indexPtrOffset, indexPtrOffset)
 	offset := binary.LittleEndian.Uint64(indexPtrData[0:8])
@@ -92,7 +91,7 @@ func readIndexData(f fs.ReadFile) []byte {
 	return data
 }
 
-func NewTable(ident uint32, fs fs.Filesys, entries []indexEntry) Table {
+func NewTable(ident uint32, entries []indexEntry, fs fs.Filesys) Table {
 	f := fs.Open(identToName(ident))
 	return Table{ident, f, newTableIndex(entries)}
 }
