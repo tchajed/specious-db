@@ -5,11 +5,15 @@ package db
 // This includes an on-disk representation for crash safety as well as in-memory
 // cache to lookup keys by first finding the right tables to search.
 //
-// https://play.golang.org/p/dV5lRWTnYaU
+// on-disk representation:
+// numTables uint32
+// idents [numTables]uint32
+// logTruncated uint8 (boolean)
 
 import (
 	"bytes"
-	"encoding/gob"
+	"fmt"
+	"io/ioutil"
 	"path"
 
 	"github.com/tchajed/specious-db/fs"
@@ -23,11 +27,9 @@ type Manifest struct {
 func initManifest(fs fs.Filesys) Manifest {
 	f := fs.Create("manifest")
 	defer f.Close()
-	enc := gob.NewEncoder(f)
-	err := enc.Encode(0)
-	if err != nil {
-		panic(err)
-	}
+	e := newEncoder(f)
+	e.Uint32(0)
+	e.Uint8(1)
 	return Manifest{fs, nil}
 }
 
@@ -46,6 +48,7 @@ func (m Manifest) cleanup() {
 		if f == "log" || f == "manifest" || m.isKnownTable(f) {
 			continue
 		}
+		fmt.Println("deleting obsolete file", f)
 		m.fs.Delete(f)
 	}
 }
@@ -62,29 +65,31 @@ func (m Manifest) Get(k Key) MaybeValue {
 	return NoValue
 }
 
-func newManifest(fs fs.Filesys) Manifest {
+func newManifest(fs fs.Filesys) (mf Manifest, logTruncated bool) {
 	f := fs.Open("manifest")
-	defer f.Close()
-	dec := gob.NewDecoder(f)
-	var idents []uint32
-	var numTables int
-	err := dec.Decode(&numTables)
+	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}
-	if numTables > 0 {
-		err = dec.Decode(&idents)
-		if err != nil {
-			panic(err)
-		}
+	f.Close()
+	dec := newDecoder(data)
+	numIdents := dec.Uint32()
+	idents := make([]uint32, 0, numIdents)
+	for i := 0; i < int(numIdents); i++ {
+		idents = append(idents, dec.Uint32())
 	}
+	logTruncated = dec.Uint8() == 1
+	if dec.RemainingBytes() > 0 {
+		panic(fmt.Errorf("manifest has %d leftover bytes", dec.RemainingBytes()))
+	}
+
 	tables := make([]Table, 0, len(idents))
 	for _, i := range idents {
 		tables = append(tables, OpenTable(i, fs))
 	}
 	m := Manifest{fs, tables}
 	m.cleanup()
-	return m
+	return m, logTruncated
 }
 
 type tableCreator struct {
@@ -105,24 +110,27 @@ func (c tableCreator) Build() Table {
 func (m *Manifest) InstallTable(t Table) {
 	// NOTE: we use the file system's atomic rename to create the manifest,
 	// but could attempt to use the logging implementation
-	tables := make([]uint32, 0, len(m.tables)+1)
-	for _, old_table := range m.tables {
-		tables = append(tables, old_table.ident)
-	}
-	tables = append(tables, t.ident)
 	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(len(tables))
-	if err != nil {
-		panic(err)
+	enc := newEncoder(&buf)
+	enc.Uint32(uint32(len(m.tables)) + 1)
+	for _, t0 := range m.tables {
+		enc.Uint32(t0.ident)
 	}
-	err = enc.Encode(tables)
-	if err != nil {
-		panic(err)
-	}
+	enc.Uint32(t.ident)
+	enc.Uint8(0)
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
-
 	m.tables = append(m.tables, t)
+}
+
+func (m *Manifest) MarkLogTruncated() {
+	var buf bytes.Buffer
+	enc := newEncoder(&buf)
+	enc.Uint32(uint32(len(m.tables)))
+	for _, t := range m.tables {
+		enc.Uint32(t.ident)
+	}
+	enc.Uint8(1)
+	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 }
 
 // TODO: might make sure sense for manifest to just create a table from an

@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/tchajed/specious-db/fs"
 )
 
@@ -33,20 +35,25 @@ func Init(fs fs.Filesys) *Database {
 }
 
 func New(fs fs.Filesys) *Database {
-	mf := newManifest(fs)
-	updates := recoverUpdates(fs)
-	if len(updates) > 0 {
-		// save these to a table; this should be crash-safe because a
-		// partially-written table will be deleted by DeleteObsoleteFiles()
-		t := mf.NewTable()
-		for _, e := range updates {
-			t.Put(e)
+	mf, logTruncated := newManifest(fs)
+	if !logTruncated {
+		fmt.Println("finishing log truncation")
+		fs.Truncate("log")
+		mf.MarkLogTruncated()
+	} else {
+		updates := recoverUpdates(fs)
+		if len(updates) > 0 {
+			// save these to a table; this should be crash-safe because a
+			// partially-written table will be deleted by DeleteObsoleteFiles()
+			t := mf.NewTable()
+			for _, e := range updates {
+				t.Put(e)
+			}
+			mf.InstallTable(t.Build())
+			fs.Truncate("log")
+			mf.MarkLogTruncated()
 		}
-		mf.InstallTable(t.Build())
 	}
-	// TODO: see below comment about atomically installing table and deleting
-	// log
-	fs.Truncate("log")
 	log := initLog(fs)
 	return &Database{fs, log, mf}
 }
@@ -62,10 +69,8 @@ func (db *Database) compactLog() {
 		t.Put(e)
 	}
 	db.mf.InstallTable(t.Build())
-	// TODO: if we crash here, recovery needs to see from the manifest that the
-	// log has been installed and therefore to delete it (it could technically
-	// be in multiple tables, but that will be confusing to prove correct)
 	db.fs.Truncate("log")
+	db.mf.MarkLogTruncated()
 	db.log = initLog(db.fs)
 }
 
