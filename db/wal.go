@@ -73,7 +73,7 @@ func (l dbLog) Get(k Key) MaybeValue {
 
 func (l dbLog) logUpdate(e KeyUpdate) {
 	var b bytes.Buffer
-	w := newWriter(&b)
+	w := newEncoder(&b)
 	w.KeyUpdate(e)
 	l.log.Add(b.Bytes())
 }
@@ -103,7 +103,7 @@ func recoverUpdates(fs fs.Filesys) []KeyUpdate {
 	txns := log.RecoverTxns(f)
 	updates := make([]KeyUpdate, 0, len(txns))
 	for _, txn := range txns {
-		r := SliceReader{txn}
+		r := newDecoder(txn)
 		e := r.KeyUpdate()
 		updates = append(updates, e)
 	}

@@ -92,17 +92,6 @@ func readIndexData(f fs.ReadFile) []byte {
 	return data
 }
 
-func (r *SliceReader) IndexEntry() indexEntry {
-	h := r.Handle()
-	keys := r.KeyRange()
-	return indexEntry{h, keys}
-}
-
-func (w *BinaryWriter) IndexEntry(e indexEntry) {
-	w.Handle(e.Handle)
-	w.KeyRange(e.Keys)
-}
-
 func NewTable(ident uint32, fs fs.Filesys, entries []indexEntry) Table {
 	f := fs.Open(identToName(ident))
 	return Table{ident, f, newTableIndex(entries)}
@@ -112,7 +101,7 @@ func OpenTable(ident uint32, fs fs.Filesys) Table {
 	f := fs.Open(identToName(ident))
 	indexData := readIndexData(f)
 	var index tableIndex
-	r := SliceReader{indexData}
+	r := newDecoder(indexData)
 	for r.RemainingBytes() > 0 {
 		index.entries = append(index.entries, r.IndexEntry())
 	}
@@ -139,7 +128,7 @@ func (t Table) Get(k Key) MaybeKeyValue {
 		return MaybeKeyValue{Valid: false}
 	}
 	data := t.f.ReadAt(int(h.Offset), int(h.Length))
-	r := SliceReader{data}
+	r := newDecoder(data)
 	for r.RemainingBytes() > 0 {
 		e := r.KeyUpdate()
 		if e.Key == k {
@@ -160,7 +149,7 @@ func (t Table) Keys() KeyRange {
 
 type tableWriter struct {
 	f            fs.File
-	w            BinaryWriter
+	w            Encoder
 	currentIndex *indexEntry
 	entries      []indexEntry
 }
@@ -168,7 +157,7 @@ type tableWriter struct {
 func newTableWriter(f fs.File) *tableWriter {
 	return &tableWriter{
 		f:            f,
-		w:            newWriter(f),
+		w:            newEncoder(f),
 		currentIndex: nil,
 		entries:      nil,
 	}
