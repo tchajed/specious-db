@@ -37,21 +37,22 @@ func New(fs fs.Filesys) *Database {
 	updates := recoverUpdates(fs)
 	if len(updates) > 0 {
 		// save these to a table; this should be crash-safe because a
-		// partially-written table will be deleted by some cleanup operation
+		// partially-written table will be deleted by DeleteObsoleteFiles()
 		t := mf.NewTable()
 		for _, e := range updates {
 			t.Put(e)
 		}
 		mf.InstallTable(t.Build())
 	}
-	// TODO: see below comment about deleting the log file instead of
-	// truncating it
-	fs.Delete("log")
+	// TODO: see below comment about atomically installing table and deleting
+	// log
+	fs.Truncate("log")
 	log := initLog(fs)
 	return &Database{fs, log, mf}
 }
 
 func (db *Database) compactLog() {
+	db.log.Close()
 	updates := db.log.Updates()
 	if len(updates) == 0 {
 		return
@@ -61,12 +62,10 @@ func (db *Database) compactLog() {
 		t.Put(e)
 	}
 	db.mf.InstallTable(t.Build())
-	db.log.Close()
-	// TODO: we're relying on there being a log file; to maintain that, instead
-	// of deleting the log we should truncate it and then treat an empty log
-	// file as an empty log during recovery (this is necessary to handle crashes
-	// after this delete)
-	db.fs.Delete("log")
+	// TODO: if we crash here, recovery needs to see from the manifest that the
+	// log has been installed and therefore to delete it (it could technically
+	// be in multiple tables, but that will be confusing to prove correct)
+	db.fs.Truncate("log")
 	db.log = initLog(db.fs)
 }
 

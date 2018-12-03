@@ -16,7 +16,6 @@ package log
 // - Cache all writes and expose a read API.
 // - For recovery, process all updates and commit them in a crash-safe manner,
 //   then clear the log file.
-//   TODO: truncating the log file should be a safe way to clear it
 
 import (
 	"io"
@@ -33,7 +32,6 @@ const (
 
 type LogFile interface {
 	io.WriteCloser
-	Sync() error
 }
 
 type Writer struct {

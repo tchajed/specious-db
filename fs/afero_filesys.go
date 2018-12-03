@@ -51,12 +51,19 @@ type writeFile struct {
 	afero.File
 }
 
+func (f writeFile) Sync() {
+	err := f.File.Sync()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (fs aferoFs) Create(fname string) File {
 	f, err := fs.fs.Create(abs(fname))
 	if err != nil {
 		panic(err)
 	}
-	return f
+	return writeFile{f}
 }
 
 func (fs aferoFs) List() []string {
@@ -69,6 +76,17 @@ func (fs aferoFs) List() []string {
 
 func (fs aferoFs) Delete(fname string) {
 	err := fs.fs.Remove(abs(fname))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (fs aferoFs) Truncate(fname string) {
+	f, err := fs.fs.OpenFile(abs(fname), os.O_WRONLY|os.O_TRUNC, 0)
+	if err != nil {
+		panic(err)
+	}
+	err = f.Close()
 	if err != nil {
 		panic(err)
 	}

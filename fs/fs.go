@@ -6,7 +6,7 @@ import (
 
 type File interface {
 	io.WriteCloser
-	Sync() error
+	Sync()
 }
 
 type ReadFile interface {
@@ -32,6 +32,7 @@ type Filesys interface {
 	Create(fname string) File
 	List() []string
 	Delete(fname string)
+	Truncate(fname string)
 	AtomicCreateWith(fname string, data []byte)
 	Debug()
 }
