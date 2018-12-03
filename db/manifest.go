@@ -10,6 +10,7 @@ package db
 import (
 	"bytes"
 	"encoding/gob"
+	"path"
 
 	"github.com/tchajed/specious-db/fs"
 )
@@ -41,6 +42,7 @@ func (m Manifest) isKnownTable(name string) bool {
 
 func (m Manifest) cleanup() {
 	for _, f := range m.fs.List() {
+		f = path.Base(f)
 		if f == "log" || f == "manifest" || m.isKnownTable(f) {
 			continue
 		}
