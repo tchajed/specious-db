@@ -9,8 +9,26 @@ import (
 
 const missing = "<missing>"
 
-func newDb() db.StringStore {
-	return db.StringStore{New()}
+type StringStore struct{ store db.Store }
+
+func (s StringStore) Get(k int) string {
+	v := s.store.Get(db.Key(k))
+	if v.Present {
+		return string(v.Value)
+	}
+	return "<missing>"
+}
+
+func (s StringStore) Put(k int, v string) {
+	s.store.Put(db.Key(k), []byte(v))
+}
+
+func (s StringStore) Delete(k int) {
+	s.store.Delete(db.Key(k))
+}
+
+func newDb() StringStore {
+	return StringStore{New()}
 }
 
 func TestPutGet(t *testing.T) {

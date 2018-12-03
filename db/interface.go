@@ -46,22 +46,3 @@ type KeyRange struct {
 func (r KeyRange) Contains(k Key) bool {
 	return r.Min <= k && k <= r.Max
 }
-
-// adapter for simpler usage
-type StringStore struct{ Store Store }
-
-func (s StringStore) Get(k int) string {
-	v := s.Store.Get(Key(k))
-	if v.Present {
-		return string(v.Value)
-	}
-	return "<missing>"
-}
-
-func (s StringStore) Put(k int, v string) {
-	s.Store.Put(Key(k), []byte(v))
-}
-
-func (s StringStore) Delete(k int) {
-	s.Store.Delete(Key(k))
-}

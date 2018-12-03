@@ -51,7 +51,7 @@ func New(fs fs.Filesys) *Database {
 	return &Database{log, mf, fs}
 }
 
-func (db *Database) CompactLog() {
+func (db *Database) compactLog() {
 	updates := db.log.Updates()
 	t := db.mf.NewTable()
 	for _, e := range updates {
@@ -65,4 +65,13 @@ func (db *Database) CompactLog() {
 	// after this delete)
 	db.fs.Delete("log")
 	db.log = initLog(db.fs)
+}
+
+func (db *Database) DeleteObsoleteFiles() {
+	db.mf.cleanup()
+}
+
+func (db *Database) Compact() {
+	db.compactLog()
+	db.DeleteObsoleteFiles()
 }

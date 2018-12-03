@@ -28,6 +28,10 @@ type entrySearchTree struct {
 	cache map[Key]MaybeValue
 }
 
+func newSearchTree() entrySearchTree {
+	return entrySearchTree{make(map[Key]MaybeValue)}
+}
+
 func (t entrySearchTree) Get(k Key) MaybeValue {
 	v, ok := t.cache[k]
 	if ok {
@@ -91,7 +95,7 @@ func (l dbLog) Updates() []KeyUpdate {
 func initLog(fs fs.Filesys) dbLog {
 	f := fs.Create("log")
 	log := log.New(f)
-	return dbLog{log, entrySearchTree{}}
+	return dbLog{log, newSearchTree()}
 }
 
 func recoverUpdates(fs fs.Filesys) []KeyUpdate {
