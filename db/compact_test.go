@@ -49,6 +49,10 @@ func (suite CompactSuite) TestGetFromTable() {
 		"only table should have key")
 }
 
+func (suite CompactSuite) TestCompactEmptyLog() {
+	suite.db.Compact()
+}
+
 func (suite CompactSuite) testGet() {
 	suite.db.Put(1, "val 1")
 	suite.db.Compact()

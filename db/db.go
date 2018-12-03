@@ -53,6 +53,9 @@ func New(fs fs.Filesys) *Database {
 
 func (db *Database) compactLog() {
 	updates := db.log.Updates()
+	if len(updates) == 0 {
+		return
+	}
 	t := db.mf.NewTable()
 	for _, e := range updates {
 		t.Put(e)
