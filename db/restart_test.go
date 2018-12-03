@@ -20,10 +20,18 @@ func TestRestartSuite(t *testing.T) {
 // files continue to function against the current file system).
 func (suite RestartSuite) Restart() {
 	suite.db.Database = New(suite.fs)
+	// suite.fs.Debug()
 }
 
 func (suite RestartSuite) TestGet() {
 	suite.db.Put(1, "val")
+	suite.Restart()
+	suite.Equal("val", suite.db.Get(1))
+}
+
+func (suite RestartSuite) TestGetFromTable() {
+	suite.db.Put(1, "val")
+	suite.db.Compact()
 	suite.Restart()
 	suite.Equal("val", suite.db.Get(1))
 }

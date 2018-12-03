@@ -86,8 +86,8 @@ func (i tableIndex) Keys() KeyRange {
 // TODO: standardize on fs goes last
 func readIndexData(f fs.ReadFile) []byte {
 	indexPtrData := f.ReadAt(f.Size()-indexPtrOffset, indexPtrOffset)
-	offset := binary.LittleEndian.Uint64(indexPtrData[0:4])
-	length := binary.LittleEndian.Uint32(indexPtrData[4:6])
+	offset := binary.LittleEndian.Uint64(indexPtrData[0:8])
+	length := binary.LittleEndian.Uint32(indexPtrData[8 : 8+4])
 	data := f.ReadAt(int(offset), int(length))
 	return data
 }

@@ -110,13 +110,17 @@ func (m *Manifest) InstallTable(t Table) {
 		tables = append(tables, old_table.ident)
 	}
 	tables = append(tables, t.ident)
-	var buf []byte
-	enc := gob.NewEncoder(bytes.NewBuffer(buf))
-	err := enc.Encode(tables)
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(len(tables))
 	if err != nil {
 		panic(err)
 	}
-	m.fs.AtomicCreateWith("manifest", buf)
+	err = enc.Encode(tables)
+	if err != nil {
+		panic(err)
+	}
+	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 
 	m.tables = append(m.tables, t)
 }
