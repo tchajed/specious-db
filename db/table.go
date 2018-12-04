@@ -107,24 +107,16 @@ func OpenTable(ident uint32, fs fs.Filesys) Table {
 	return Table{ident, f, index}
 }
 
-type MaybeKeyValue struct {
-	Valid   bool
-	Present bool
-	Value
+type MaybeMaybeValue struct {
+	Valid bool
+	MaybeValue
 }
 
-func (mu MaybeKeyValue) MaybeValue() MaybeValue {
-	if !mu.Valid {
-		panic("attempt to get value from an invalid value")
-	}
-	return MaybeValue{Present: mu.Present, Value: mu.Value}
-}
-
-func (t Table) Get(k Key) MaybeKeyValue {
+func (t Table) Get(k Key) MaybeMaybeValue {
 	h := t.index.Get(k)
 	// if handle is not found in index, then key is not present in table
 	if !h.IsValid() {
-		return MaybeKeyValue{Valid: false}
+		return MaybeMaybeValue{Valid: false}
 	}
 	data := t.f.ReadAt(int(h.Offset), int(h.Length))
 	r := newDecoder(data)
@@ -132,14 +124,14 @@ func (t Table) Get(k Key) MaybeKeyValue {
 		e := r.KeyUpdate()
 		if e.Key == k {
 			if e.IsPut() {
-				return MaybeKeyValue{Valid: true, Present: true, Value: e.Value}
+				return MaybeMaybeValue{true, MaybeValue{Present: true, Value: e.Value}}
 			} else {
-				return MaybeKeyValue{Valid: true, Present: false}
+				return MaybeMaybeValue{true, MaybeValue{Present: false}}
 			}
 		}
 	}
 	// key turned out to be missing
-	return MaybeKeyValue{Valid: false}
+	return MaybeMaybeValue{Valid: false}
 }
 
 func (t Table) Keys() KeyRange {
@@ -150,28 +142,28 @@ type tableWriter struct {
 	f            fs.File
 	w            Encoder
 	currentIndex *indexEntry
-	entries      []indexEntry
+	// cache of entries written, to initialize the in-memory table upon
+	// finishing
+	entries []indexEntry
 }
 
 func newTableWriter(f fs.File) *tableWriter {
 	return &tableWriter{
-		f:            f,
-		w:            newEncoder(f),
-		currentIndex: nil,
-		entries:      nil,
+		f: f,
+		w: newEncoder(f),
 	}
 }
 
-func (w tableWriter) Offset() uint64 {
+func (w tableWriter) offset() uint64 {
 	return uint64(w.w.BytesWritten())
 }
 
 func (w tableWriter) currentIndexLength() uint32 {
-	return uint32(w.Offset() - w.currentIndex.Handle.Offset)
+	return uint32(w.offset() - w.currentIndex.Handle.Offset)
 }
 
 func (w *tableWriter) Put(e KeyUpdate) {
-	start := w.Offset()
+	start := w.offset()
 	w.w.KeyUpdate(e)
 	if w.currentIndex == nil {
 		// initialize an index entry
@@ -201,11 +193,11 @@ func (w tableWriter) Close() []indexEntry {
 	if len(w.entries) == 0 {
 		panic("table has no values")
 	}
-	indexStart := w.Offset()
+	indexStart := w.offset()
 	for _, e := range w.entries {
 		w.w.IndexEntry(e)
 	}
-	indexHandle := SliceHandle{indexStart, uint32(w.Offset() - indexStart)}
+	indexHandle := SliceHandle{indexStart, uint32(w.offset() - indexStart)}
 	w.w.Handle(indexHandle)
 	err := w.f.Close()
 	if err != nil {

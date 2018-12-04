@@ -44,7 +44,7 @@ func (suite CompactSuite) TestGetFromTable() {
 	suite.db.Put(1, "val 1")
 	suite.db.Compact()
 	suite.Equal(
-		MaybeKeyValue{Valid: true, Present: true, Value: []byte("val 1")},
+		MaybeMaybeValue{true, MaybeValue{Present: true, Value: []byte("val 1")}},
 		suite.Tables()[0].Get(1),
 		"only table should have key")
 }

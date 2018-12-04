@@ -59,7 +59,7 @@ func (m Manifest) Get(k Key) MaybeValue {
 	for i := len(m.tables) - 1; i >= 0; i-- {
 		mu := m.tables[i].Get(k)
 		if mu.Valid {
-			return mu.MaybeValue()
+			return mu.MaybeValue
 		}
 	}
 	return NoValue
