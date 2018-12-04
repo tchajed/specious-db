@@ -93,21 +93,25 @@ func newManifest(fs fs.Filesys) (mf Manifest, logTruncated bool) {
 }
 
 type tableCreator struct {
-	w     *tableWriter
-	ident uint32
+	// think of the tableCreator as being a set of methods on a manifest, keyed
+	// by a (new, uninstalled) table ident
 	m     *Manifest
+	ident uint32
+	w     *tableWriter
 }
 
 func (c tableCreator) Put(e KeyUpdate) {
 	c.w.Put(e)
 }
 
-func (c tableCreator) Build() Table {
+func (c tableCreator) CloseAndInstall() {
 	entries := c.w.Close()
-	return NewTable(c.ident, entries, c.m.fs)
+	f := c.m.fs.Open(identToName(c.ident))
+	t := NewTable(c.ident, f, entries)
+	c.m.installTable(t)
 }
 
-func (m *Manifest) InstallTable(t Table) {
+func (m *Manifest) installTable(t Table) {
 	// NOTE: we use the file system's atomic rename to create the manifest,
 	// but could attempt to use the logging implementation
 	var buf bytes.Buffer
@@ -133,10 +137,10 @@ func (m *Manifest) MarkLogTruncated() {
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 }
 
-// TODO: might make sure sense for manifest to just create a table from an
+// TODO: might make more sense for manifest to just create a table from an
 // iterator over updates (that function can subsume tableCreator and maybe still
 // use a local tableWriter)
-func (m *Manifest) NewTable() tableCreator {
+func (m *Manifest) CreateTable() tableCreator {
 	// NOTE: need to guarantee that table IDs increase and we know about all the
 	// tables for this name to be fresh
 	id := uint32(1)
@@ -144,7 +148,7 @@ func (m *Manifest) NewTable() tableCreator {
 		id = m.tables[len(m.tables)-1].ident + 1
 	}
 	f := m.fs.Create(identToName(id))
-	return tableCreator{newTableWriter(f), id, m}
+	return tableCreator{m, id, newTableWriter(f)}
 }
 
 // TODO: implement compaction

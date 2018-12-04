@@ -19,7 +19,7 @@ func TestRestartSuite(t *testing.T) {
 // goroutines keep running, in-memory data structures continue to live, and open
 // files continue to function against the current file system).
 func (suite RestartSuite) Restart() {
-	suite.db.Database = New(suite.fs)
+	suite.db.Database = Open(suite.fs)
 	// suite.fs.Debug()
 }
 

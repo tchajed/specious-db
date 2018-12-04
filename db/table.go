@@ -91,8 +91,8 @@ func readIndexData(f fs.ReadFile) []byte {
 	return data
 }
 
-func NewTable(ident uint32, entries []indexEntry, fs fs.Filesys) Table {
-	f := fs.Open(identToName(ident))
+// NewTable creates the in-memory structure representing a table
+func NewTable(ident uint32, f fs.ReadFile, entries []indexEntry) Table {
 	return Table{ident, f, newTableIndex(entries)}
 }
 

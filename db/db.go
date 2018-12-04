@@ -36,7 +36,7 @@ func Init(fs fs.Filesys) *Database {
 	return &Database{fs, log, mf}
 }
 
-func New(fs fs.Filesys) *Database {
+func Open(fs fs.Filesys) *Database {
 	mf, logTruncated := newManifest(fs)
 	if !logTruncated {
 		fmt.Println("finishing log truncation")
@@ -47,11 +47,11 @@ func New(fs fs.Filesys) *Database {
 		if len(updates) > 0 {
 			// save these to a table; this should be crash-safe because a
 			// partially-written table will be deleted by DeleteObsoleteFiles()
-			t := mf.NewTable()
+			t := mf.CreateTable()
 			for _, e := range updates {
 				t.Put(e)
 			}
-			mf.InstallTable(t.Build())
+			t.CloseAndInstall()
 			fs.Truncate("log")
 			mf.MarkLogTruncated()
 		}
@@ -66,11 +66,11 @@ func (db *Database) compactLog() {
 	if len(updates) == 0 {
 		return
 	}
-	t := db.mf.NewTable()
+	t := db.mf.CreateTable()
 	for _, e := range updates {
 		t.Put(e)
 	}
-	db.mf.InstallTable(t.Build())
+	t.CloseAndInstall()
 	db.fs.Truncate("log")
 	db.mf.MarkLogTruncated()
 	db.log = initLog(db.fs)
