@@ -60,3 +60,20 @@ func (suite RestartSuite) TestMultipleUpdates() {
 	suite.Equal(missing, suite.db.Get(1))
 	suite.Equal("val 2", suite.db.Get(2))
 }
+
+func (suite RestartSuite) TestIndexing() {
+	suite.db.Put(0, "table min")
+	suite.db.Put(1000, "table max")
+	suite.putValues(1, 100)
+	suite.db.Compact()
+	suite.db.Put(0, "table min")
+	suite.db.Put(1001, "table max")
+	suite.putValues(101, 200)
+	suite.db.Compact()
+	suite.Restart()
+	suite.checkKey(10, "value from table 1")
+	suite.checkKey(110, "value from table 1")
+	suite.Equal("table max", suite.db.Get(1000), "max from table 1")
+	suite.Equal("table max", suite.db.Get(1001), "max from table 2")
+	suite.Equal(missing, suite.db.Get(10000), "non-existent key")
+}
