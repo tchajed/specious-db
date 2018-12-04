@@ -24,6 +24,7 @@ type Store interface {
 	Put(k Key, v Value)
 	Delete(k Key)
 	// TODO: iterator API
+	Close()
 }
 
 type KeyRange struct {

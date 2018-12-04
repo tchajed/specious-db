@@ -8,17 +8,30 @@ import (
 
 type RestartSuite struct {
 	*DbSuite
+	forceRestart bool
 }
 
-func TestRestartSuite(t *testing.T) {
-	suite.Run(t, RestartSuite{new(DbSuite)})
+func TestRestartCleanlySuite(t *testing.T) {
+	suite.Run(t, RestartSuite{
+		DbSuite:      new(DbSuite),
+		forceRestart: false})
 }
 
-// Restart forcibly restarts the database, using the same file system (though
-// note that the databse is only garbage collected, not truly shut down, so
-// goroutines keep running, in-memory data structures continue to live, and open
-// files continue to function against the current file system).
+func TestForceRestartSuite(t *testing.T) {
+	suite.Run(t, RestartSuite{
+		DbSuite:      new(DbSuite),
+		forceRestart: true})
+}
+
+// Restart restarts the database, using the same file system (though note that
+// the database's in-memory data structures are only garbage collected, not
+// immediately de-allocated, so goroutines keep running, in-memory data
+// structures continue to live, and open files continue to function against the
+// current file system).
 func (suite RestartSuite) Restart() {
+	if !suite.forceRestart {
+		suite.db.Database.Close()
+	}
 	suite.db.Database = Open(suite.fs)
 	// suite.fs.Debug()
 }

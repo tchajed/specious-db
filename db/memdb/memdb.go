@@ -22,6 +22,9 @@ func (s *Memdb) Delete(k db.Key) {
 	delete(s.m, k)
 }
 
+func (s *Memdb) Close() {
+}
+
 func New() *Memdb {
 	return &Memdb{make(map[db.Key]db.Value)}
 }

@@ -84,3 +84,8 @@ func (db *Database) Compact() {
 	db.compactLog()
 	db.DeleteObsoleteFiles()
 }
+
+func (db *Database) Close() {
+	db.compactLog()
+	db.log.Close()
+}
