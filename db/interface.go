@@ -23,14 +23,6 @@ func SomeValue(v Value) MaybeValue {
 	return MaybeValue{Present: true, Value: v}
 }
 
-func (mv MaybeValue) OrElse(f func() MaybeValue) MaybeValue {
-	if mv.Present {
-		return mv
-	} else {
-		return f()
-	}
-}
-
 type Store interface {
 	Get(k Key) MaybeValue
 	Put(k Key, v Value)

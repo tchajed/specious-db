@@ -13,9 +13,11 @@ type Database struct {
 }
 
 func (db *Database) Get(k Key) MaybeValue {
-	return db.log.Get(k).OrElse(func() MaybeValue {
-		return db.mf.Get(k)
-	})
+	mv := db.log.Get(k)
+	if mv.Present {
+		return mv
+	}
+	return db.mf.Get(k)
 }
 
 func (db *Database) Put(k Key, v Value) {
