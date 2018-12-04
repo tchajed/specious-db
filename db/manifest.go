@@ -148,10 +148,10 @@ func (m *Manifest) CreateTable() tableCreator {
 	return tableCreator{m, id, newTableWriter(f)}
 }
 
-// TODO: implement compaction
+// TODO: implement compaction from L0 to L1
 //
-// requires iteration over entire table and writing out new table
+// needs to treat L0 specially; must take all files from a prefix so that the
+// latest update is always reflected
 
-// TODO: pick and handle files for young generation specially, coalescing duplicates between files
-
-// TODO: streaming construction of multiple tables, splitting at some file size
+// TODO: implement streaming construction of multiple tables, splitting at some
+// file size
