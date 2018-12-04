@@ -1,3 +1,4 @@
+dist: xenial
 language: go
 
 go:
@@ -5,3 +6,8 @@ go:
   - "1.11.x"
 
 script: go test -v ./...
+
+addons:
+  apt:
+    packages:
+      - leveldb
