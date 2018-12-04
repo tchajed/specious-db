@@ -137,9 +137,6 @@ func (m *Manifest) MarkLogTruncated() {
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 }
 
-// TODO: might make more sense for manifest to just create a table from an
-// iterator over updates (that function can subsume tableCreator and maybe still
-// use a local tableWriter)
 func (m *Manifest) CreateTable() tableCreator {
 	// NOTE: need to guarantee that table IDs increase and we know about all the
 	// tables for this name to be fresh
