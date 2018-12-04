@@ -57,6 +57,6 @@ func (suite *DbSuite) putValues(min, max int) {
 	}
 }
 
-func (suite *DbSuite) checkKey(key int, msgAndArgs ...interface{}) {
+func (suite *DbSuite) check(key int, msgAndArgs ...interface{}) {
 	suite.Equal(suite.db.Expected(key), suite.db.Get(key), msgAndArgs...)
 }

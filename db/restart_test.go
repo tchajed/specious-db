@@ -39,14 +39,14 @@ func (suite RestartSuite) Restart() {
 func (suite RestartSuite) TestGet() {
 	suite.db.Put(1, "val")
 	suite.Restart()
-	suite.Equal("val", suite.db.Get(1))
+	suite.check(1)
 }
 
 func (suite RestartSuite) TestGetFromTable() {
 	suite.db.Put(1, "val")
 	suite.db.Compact()
 	suite.Restart()
-	suite.Equal("val", suite.db.Get(1))
+	suite.check(1)
 }
 
 func (suite RestartSuite) TestMultipleTables() {
@@ -56,8 +56,8 @@ func (suite RestartSuite) TestMultipleTables() {
 	suite.db.Put(2, "val 2")
 	suite.db.Compact()
 	suite.Restart()
-	suite.Equal("val", suite.db.Get(1))
-	suite.Equal("val 2", suite.db.Get(2))
+	suite.check(1)
+	suite.check(2)
 }
 
 func (suite RestartSuite) TestMultipleUpdates() {
@@ -70,8 +70,8 @@ func (suite RestartSuite) TestMultipleUpdates() {
 	suite.Restart()
 	suite.db.Put(1, missing)
 	suite.db.Compact()
-	suite.Equal(missing, suite.db.Get(1))
-	suite.Equal("val 2", suite.db.Get(2))
+	suite.check(1)
+	suite.check(2)
 }
 
 func (suite RestartSuite) TestIndexing() {
@@ -83,11 +83,11 @@ func (suite RestartSuite) TestIndexing() {
 	suite.db.Put(1001, "table max")
 	suite.putValues(101, 200)
 	suite.Restart()
-	suite.checkKey(10, "value from table 1")
-	suite.checkKey(110, "value from table 1")
-	suite.Equal("table max", suite.db.Get(1000), "max from table 1")
-	suite.Equal("table max", suite.db.Get(1001), "max from table 2")
-	suite.Equal(missing, suite.db.Get(10000), "non-existent key")
+	suite.check(10, "value from table 1")
+	suite.check(110, "value from table 1")
+	suite.check(1000, "max from table 1")
+	suite.check(1001, "max from table 2")
+	suite.check(10000, "other key")
 }
 
 func (suite RestartSuite) TestOutOfOrderWrites() {
@@ -95,5 +95,5 @@ func (suite RestartSuite) TestOutOfOrderWrites() {
 	suite.db.Put(2, "val 2")
 	suite.db.Put(1, "val 1")
 	suite.Restart()
-	suite.Equal("val 2", suite.db.Get(2), "out of order write")
+	suite.check(2, "out-of-order write")
 }
