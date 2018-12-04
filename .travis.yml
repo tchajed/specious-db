@@ -10,4 +10,5 @@ script: go test -v ./...
 addons:
   apt:
     packages:
-      - leveldb
+      - libleveldb-dev
+      - libleveldb1v5
