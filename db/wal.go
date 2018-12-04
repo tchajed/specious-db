@@ -62,12 +62,16 @@ func (u KeyUpdate) IsPut() bool {
 	return u.MaybeValue.Present
 }
 
+func sortUpdates(es []KeyUpdate) {
+	sort.Slice(es, func(i, j int) bool { return es[i].Key < es[j].Key })
+}
+
 func (t entrySearchTree) Updates() []KeyUpdate {
 	updates := make([]KeyUpdate, 0, len(t.cache))
 	for k, ku := range t.cache {
 		updates = append(updates, KeyUpdate{k, ku})
 	}
-	sort.Slice(updates, func(i, j int) bool { return updates[i].Key < updates[j].Key })
+	sortUpdates(updates)
 	return updates
 }
 
@@ -116,6 +120,7 @@ func recoverUpdates(fs fs.Filesys) []KeyUpdate {
 			updates = append(updates, e)
 		}
 	}
+	sortUpdates(updates)
 	return updates
 }
 

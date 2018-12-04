@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// TODO: unify with restart suite (run with no restarts)
 type CompactSuite struct {
 	*DbSuite
 }
@@ -89,4 +90,12 @@ func (suite CompactSuite) TestIndexing() {
 	suite.Equal("table max", suite.db.Get(1000), "max from table 1")
 	suite.Equal("table max", suite.db.Get(1001), "max from table 2")
 	suite.Equal(missing, suite.db.Get(10000), "non-existent key")
+}
+
+func (suite CompactSuite) TestOutOfOrder() {
+	suite.db.Put(0, "val 0")
+	suite.db.Put(2, "val 2")
+	suite.db.Put(1, "val 1")
+	suite.db.Compact()
+	suite.Equal("val 2", suite.db.Get(2), "out of order write")
 }

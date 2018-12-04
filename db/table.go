@@ -162,6 +162,9 @@ func (w tableWriter) currentIndexLength() uint32 {
 	return uint32(w.offset() - w.currentIndex.Handle.Offset)
 }
 
+// Put adds an update to an in-progress table.
+//
+// Requires that updates be ordered by key.
 func (w *tableWriter) Put(e KeyUpdate) {
 	start := w.offset()
 	w.w.KeyUpdate(e)
@@ -171,6 +174,9 @@ func (w *tableWriter) Put(e KeyUpdate) {
 			SliceHandle{Offset: start},
 			KeyRange{Min: e.Key},
 		}
+	}
+	if e.Key < w.currentIndex.Keys.Max {
+		panic("out-of-order updates to table")
 	}
 	w.currentIndex.Keys.Max = e.Key
 	// periodic flush to create some index entries
