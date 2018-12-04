@@ -6,21 +6,40 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	noRestart int = iota
+	compactButNoRestart
+	forceRestart
+	cleanRestart
+)
+
 type RestartSuite struct {
 	*DbSuite
-	forceRestart bool
+	restartType int
+}
+
+func TestNoRestartSuite(t *testing.T) {
+	suite.Run(t, RestartSuite{
+		DbSuite:     new(DbSuite),
+		restartType: noRestart})
+}
+
+func TestCompactWithoutRestartSuite(t *testing.T) {
+	suite.Run(t, RestartSuite{
+		DbSuite:     new(DbSuite),
+		restartType: compactButNoRestart})
 }
 
 func TestRestartCleanlySuite(t *testing.T) {
 	suite.Run(t, RestartSuite{
-		DbSuite:      new(DbSuite),
-		forceRestart: false})
+		DbSuite:     new(DbSuite),
+		restartType: cleanRestart})
 }
 
 func TestForceRestartSuite(t *testing.T) {
 	suite.Run(t, RestartSuite{
-		DbSuite:      new(DbSuite),
-		forceRestart: true})
+		DbSuite:     new(DbSuite),
+		restartType: forceRestart})
 }
 
 // Restart restarts the database, using the same file system (though note that
@@ -29,10 +48,16 @@ func TestForceRestartSuite(t *testing.T) {
 // structures continue to live, and open files continue to function against the
 // current file system).
 func (suite RestartSuite) Restart() {
-	if !suite.forceRestart {
+	switch suite.restartType {
+	case noRestart:
+	case compactButNoRestart:
+		suite.db.Compact()
+	case forceRestart:
+		suite.db.Database = Open(suite.fs)
+	case cleanRestart:
 		suite.db.Database.Close()
+		suite.db.Database = Open(suite.fs)
 	}
-	suite.db.Database = Open(suite.fs)
 	// suite.fs.Debug()
 }
 

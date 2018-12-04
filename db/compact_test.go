@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// TODO: unify with restart suite (run with no restarts)
 type CompactSuite struct {
 	*DbSuite
 }
