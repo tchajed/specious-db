@@ -3,34 +3,25 @@ package memdb
 import "github.com/tchajed/specious-db/db"
 
 type Memdb struct {
-	entries []db.Entry
+	m map[db.Key]db.Value
 }
 
 func (s Memdb) Get(k db.Key) db.MaybeValue {
-	val := db.MaybeValue{Present: false}
-	for _, e := range s.entries {
-		if db.KeyEq(e.Key, k) {
-			val = db.SomeValue(e.Value)
-		}
+	val, ok := s.m[k]
+	if !ok {
+		return db.NoValue
 	}
-	return val
+	return db.SomeValue(val)
 }
 
 func (s *Memdb) Put(k db.Key, v db.Value) {
-	s.entries = append(s.entries, db.Entry{k, v})
+	s.m[k] = v
 }
 
 func (s *Memdb) Delete(k db.Key) {
-	for i, e := range s.entries {
-		if db.KeyEq(e.Key, k) {
-			s.entries[i] = db.Entry{0, nil}
-		}
-	}
-	return
+	delete(s.m, k)
 }
 
-var _ db.Store = &Memdb{}
-
 func New() *Memdb {
-	return &Memdb{}
+	return &Memdb{make(map[db.Key]db.Value)}
 }

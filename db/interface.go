@@ -8,10 +8,6 @@ type Entry struct {
 	Value
 }
 
-func KeyEq(k1 Key, k2 Key) bool {
-	return k1 == k2
-}
-
 type MaybeValue struct {
 	Present bool
 	Value
