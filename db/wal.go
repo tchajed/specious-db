@@ -5,8 +5,12 @@ package db
 // Provides a mini key-value store on top of a write-ahead log that only serves
 // Gets from the log (missing keys may have been migrated to SSTables)
 //
-// Log records are KeyUpdates, as encoded/decoded by binary.go.
-// TODO: extend record format to batches of operations.
+// Log records are sequences of KeyUpdates.
+
+// NOTE: log format supports multiple key updates in a log record, but the
+// external interface doesn't provides this (the low-level logUpdates supports
+// logging transactional writes and recoverUpdates will correctly handle
+// multiple updates in one record).
 
 import (
 	"bytes"
@@ -71,20 +75,22 @@ func (l dbLog) Get(k Key) MaybeValue {
 	return l.cache.Get(k)
 }
 
-func (l dbLog) logUpdate(e KeyUpdate) {
+func (l dbLog) logUpdates(es []KeyUpdate) {
 	var b bytes.Buffer
 	w := newEncoder(&b)
-	w.KeyUpdate(e)
+	for _, e := range es {
+		w.KeyUpdate(e)
+	}
 	l.log.Add(b.Bytes())
 }
 
 func (l dbLog) Put(k Key, v Value) {
-	l.logUpdate(KeyUpdate{k, SomeValue(v)})
+	l.logUpdates([]KeyUpdate{{k, SomeValue(v)}})
 	l.cache.Put(k, v)
 }
 
 func (l dbLog) Delete(k Key) {
-	l.logUpdate(KeyUpdate{k, NoValue})
+	l.logUpdates([]KeyUpdate{{k, NoValue}})
 	l.cache.Delete(k)
 }
 
@@ -105,8 +111,10 @@ func recoverUpdates(fs fs.Filesys) []KeyUpdate {
 	updates := make([]KeyUpdate, 0, len(txns))
 	for _, txn := range txns {
 		r := newDecoder(txn)
-		e := r.KeyUpdate()
-		updates = append(updates, e)
+		for r.RemainingBytes() > 0 {
+			e := r.KeyUpdate()
+			updates = append(updates, e)
+		}
 	}
 	return updates
 }
