@@ -1,8 +1,6 @@
 package db
 
 import (
-	"fmt"
-
 	"github.com/tchajed/specious-db/fs"
 )
 
@@ -38,24 +36,21 @@ func Init(fs fs.Filesys) *Database {
 }
 
 func Open(fs fs.Filesys) *Database {
-	mf, logTruncated := newManifest(fs)
-	if !logTruncated {
-		fmt.Println("finishing log truncation")
-		fs.Truncate("log")
-		mf.MarkLogTruncated()
-	} else {
-		updates := recoverUpdates(fs)
-		if len(updates) > 0 {
-			// save these to a table; this should be crash-safe because a
-			// partially-written table will be deleted by DeleteObsoleteFiles()
-			t := mf.CreateTable()
-			for _, e := range updates {
-				t.Put(e)
-			}
-			t.CloseAndInstall()
-			fs.Truncate("log")
-			mf.MarkLogTruncated()
+	mf := newManifest(fs)
+	updates := recoverUpdates(fs)
+	if len(updates) > 0 {
+		// save these to a table; this should be crash-safe because a
+		// partially-written table will be deleted by DeleteObsoleteFiles()
+		t := mf.CreateTable()
+		for _, e := range updates {
+			t.Put(e)
 		}
+		t.CloseAndInstall()
+		// if we crash here, the log will be converted to a duplicate table
+		//
+		// NOTE: these tables will only be merged by another compaction (once
+		// that's implemented)
+		fs.Truncate("log")
 	}
 	log := initLog(fs)
 	return &Database{fs, log, mf}
@@ -73,7 +68,6 @@ func (db *Database) compactLog() {
 	}
 	t.CloseAndInstall()
 	db.fs.Truncate("log")
-	db.mf.MarkLogTruncated()
 	db.log = initLog(db.fs)
 }
 

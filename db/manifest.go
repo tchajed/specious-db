@@ -8,7 +8,6 @@ package db
 // on-disk representation:
 // numTables uint32
 // idents [numTables]uint32
-// logTruncated uint8 (boolean)
 
 import (
 	"bytes"
@@ -29,7 +28,6 @@ func initManifest(fs fs.Filesys) Manifest {
 	defer f.Close()
 	e := newEncoder(f)
 	e.Uint32(0)
-	e.Uint8(1)
 	return Manifest{fs, nil}
 }
 
@@ -65,7 +63,7 @@ func (m Manifest) Get(k Key) MaybeValue {
 	return NoValue
 }
 
-func newManifest(fs fs.Filesys) (mf Manifest, logTruncated bool) {
+func newManifest(fs fs.Filesys) Manifest {
 	f := fs.Open("manifest")
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -78,7 +76,6 @@ func newManifest(fs fs.Filesys) (mf Manifest, logTruncated bool) {
 	for i := 0; i < int(numIdents); i++ {
 		idents = append(idents, dec.Uint32())
 	}
-	logTruncated = dec.Uint8() == 1
 	if dec.RemainingBytes() > 0 {
 		panic(fmt.Errorf("manifest has %d leftover bytes", dec.RemainingBytes()))
 	}
@@ -89,7 +86,7 @@ func newManifest(fs fs.Filesys) (mf Manifest, logTruncated bool) {
 	}
 	m := Manifest{fs, tables}
 	m.cleanup()
-	return m, logTruncated
+	return m
 }
 
 type tableCreator struct {
@@ -121,20 +118,8 @@ func (m *Manifest) installTable(t Table) {
 		enc.Uint32(t0.ident)
 	}
 	enc.Uint32(t.ident)
-	enc.Uint8(0)
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 	m.tables = append(m.tables, t)
-}
-
-func (m *Manifest) MarkLogTruncated() {
-	var buf bytes.Buffer
-	enc := newEncoder(&buf)
-	enc.Uint32(uint32(len(m.tables)))
-	for _, t := range m.tables {
-		enc.Uint32(t.ident)
-	}
-	enc.Uint8(1)
-	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 }
 
 func (m *Manifest) CreateTable() tableCreator {
