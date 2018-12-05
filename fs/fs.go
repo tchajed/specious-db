@@ -21,18 +21,23 @@ type ReadFile interface {
 // (there are no directory names in these methods).
 //
 // Callers are expected to follow some rules when calling this API:
-// - Open: fname should exist
-// - Create: fname should not exist
-// - ReadAt: fname should exist and start and length should be in-bounds (start
-//   can be negative, in which case it's interpreted with respect to the end of the
-//   file; this should not wrap to the beginning of the file).
-// - Delete: fname should exist
+//   Open:      fname should exist
+//   Create:    fname should not exist
+//   Delete:    fname should exist
+//   Truncate:  fname should exist
 type Filesys interface {
+	// read-only APIs
+
 	Open(fname string) ReadFile
-	Create(fname string) File
 	List() []string
+	// Debug is a convenience to list out the entire file system for debugging
+	// (technically this can be implemented on top of the above API)
+	Debug()
+
+	// modifications
+
+	Create(fname string) File
 	Delete(fname string)
 	Truncate(fname string)
 	AtomicCreateWith(fname string, data []byte)
-	Debug()
 }
