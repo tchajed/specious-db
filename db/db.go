@@ -33,6 +33,7 @@ var _ Store = &Database{}
 func Init(fs fs.Filesys) *Database {
 	mf := initManifest(fs)
 	log := initLog(fs)
+	mf.cleanup()
 	return &Database{fs, log, mf}
 }
 

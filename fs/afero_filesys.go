@@ -94,7 +94,7 @@ func (fs aferoFs) Truncate(fname string) {
 
 func (fs aferoFs) AtomicCreateWith(fname string, data []byte) {
 	tmpFile := abs(fmt.Sprintf("%s.tmp", fname))
-	err := fs.fs.WriteFile(tmpFile, data, 0x744)
+	err := fs.fs.WriteFile(tmpFile, data, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +154,7 @@ func MemFs() Filesys {
 // Creates basedir if it does not exist.
 func DirFs(basedir string) Filesys {
 	fs := afero.NewOsFs()
-	ok, err := afero.IsDir(fs, basedir)
+	ok, err := afero.Exists(fs, basedir)
 	if err != nil {
 		panic(err)
 	}
