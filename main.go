@@ -47,11 +47,22 @@ func showNum(i int) string {
 	return fmt.Sprintf("%d", i)
 }
 
+// A Benchmark represents a benchmark loop, with access to a BenchState for stat
+// tracking.
+type Benchmark struct {
+	Name string
+	Func func(s BenchState)
+}
+
+func run(b Benchmark) {
+	s := NewBench(b.Name)
+	b.Func(s)
+	s.Report()
+}
+
 func main() {
 	dbType := flag.String("db", "specious", "database to use (specious|leveldb|noop)")
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
-	var compactEvery int
-	flag.IntVar(&compactEvery, "compact-every", 50000, "compact database after x entries")
 	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
 	flag.Parse()
@@ -82,7 +93,6 @@ func main() {
 	}{
 		{"database", *dbType},
 		{"entries", showNum(*numEntries)},
-		{"compaction every", showNum(compactEvery)},
 		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
 		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
 	} {
@@ -90,22 +100,19 @@ func main() {
 	}
 	fmt.Println(strings.Repeat("-", 30))
 
-	s := NewBench()
-	for i := 0; i < *numEntries; i++ {
-		if compactEvery > 0 && i%compactEvery == 0 && i != 0 {
+	run(Benchmark{"fillseq", func(s BenchState) {
+		for i := 0; i < *numEntries; i++ {
+			k, v := s.RandomKey(), s.Value()
+			db.Put(k, v)
+			s.FinishedSingleOp(8 + len(v))
+		}
+		if *finalCompact {
 			db.Compact()
 		}
-		k, v := s.RandomKey(), s.Value()
-		db.Put(k, v)
-		s.FinishedSingleOp(8 + len(v))
-	}
-	if *finalCompact {
-		db.Compact()
-	}
-	s.Done()
+		s.Done()
+	}})
 
 	db.Close()
-	s.Report()
 	if *deleteDatabase {
 		os.RemoveAll(dbPath)
 	}

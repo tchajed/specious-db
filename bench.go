@@ -74,19 +74,24 @@ func (s stats) MegabytesPerSec() float64 {
 	return mb / s.seconds()
 }
 
-func (s stats) Report() {
-	fmt.Printf("%7.3f micros/op; %6.1f MB/s\n",
+func (s stats) formatStats() string {
+	return fmt.Sprintf("%7.3f micros/op; %6.1f MB/s",
 		s.MicrosPerOp(),
 		s.MegabytesPerSec())
 }
 
 // BenchState tracks information for a single benchmark.
 type BenchState struct {
+	name string
 	*generator
 	*stats
 }
 
 // NewBench initializes a BenchState.
-func NewBench() BenchState {
-	return BenchState{newGenerator(), newStats()}
+func NewBench(name string) BenchState {
+	return BenchState{name, newGenerator(), newStats()}
+}
+
+func (s BenchState) Report() {
+	fmt.Printf("%-15s : %s\n", s.name, s.stats.formatStats())
 }
