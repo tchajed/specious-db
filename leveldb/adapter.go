@@ -8,10 +8,12 @@ import (
 	"github.com/tchajed/specious-db/db"
 )
 
-type levelDb struct {
-	*levigo.DB
+// Database is a wrapper around a LevelDB database
+type Database struct {
+	db *levigo.DB
 	// scratch space to create key buffers
 	keyDataPool *sync.Pool
+	wo          *levigo.WriteOptions
 }
 
 func newKeyDataPool() *sync.Pool {
@@ -20,10 +22,7 @@ func newKeyDataPool() *sync.Pool {
 	}}
 }
 
-// New creates a LevelDB instance at path.
-//
-// Creates the path if it does not exist.
-func New(path string) db.Store {
+func levelDbOpts() *levigo.Options {
 	opts := levigo.NewOptions()
 	opts.SetCreateIfMissing(true)
 	opts.SetCompression(levigo.NoCompression)
@@ -32,23 +31,33 @@ func New(path string) db.Store {
 	opts.SetCache(cache)
 	// NOTE: leveldb may have a minimum write buffer size
 	opts.SetWriteBufferSize(0)
-	db, err := levigo.Open(path, opts)
+	return opts
+}
+
+// New creates a LevelDB instance at path.
+//
+// Creates the path if it does not exist.
+func New(path string) *Database {
+	db, err := levigo.Open(path, levelDbOpts())
 	if err != nil {
 		panic(err)
 	}
-	return levelDb{db, newKeyDataPool()}
+	pool := newKeyDataPool()
+	wo := levigo.NewWriteOptions()
+	return &Database{db, pool, wo}
 }
 
 // fromDbKey converts a db.Key (a uint64) to a byte slice for usage with leveldb
-func (d levelDb) fromDbKey(k db.Key) []byte {
+func (d Database) fromDbKey(k db.Key) []byte {
 	keyScratch := d.keyDataPool.Get().([]byte)
 	binary.LittleEndian.PutUint64(keyScratch, k)
 	return keyScratch
 }
 
-func (d levelDb) Get(k db.Key) db.MaybeValue {
+// Get retrieves a key from the database.
+func (d Database) Get(k db.Key) db.MaybeValue {
 	ro := levigo.NewReadOptions()
-	data, err := d.DB.Get(ro, d.fromDbKey(k))
+	data, err := d.db.Get(ro, d.fromDbKey(k))
 	if err != nil {
 		panic(err)
 	}
@@ -58,22 +67,29 @@ func (d levelDb) Get(k db.Key) db.MaybeValue {
 	return db.SomeValue(data)
 }
 
-func (d levelDb) Put(k db.Key, v db.Value) {
-	wo := levigo.NewWriteOptions()
-	err := d.DB.Put(wo, d.fromDbKey(k), v)
+// Put inserts a key into the database.
+func (d Database) Put(k db.Key, v db.Value) {
+	err := d.db.Put(d.wo, d.fromDbKey(k), v)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (d levelDb) Delete(k db.Key) {
-	wo := levigo.NewWriteOptions()
-	err := d.DB.Delete(wo, d.fromDbKey(k))
+// Delete deletes a key from the database.
+func (d Database) Delete(k db.Key) {
+	err := d.db.Delete(d.wo, d.fromDbKey(k))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (d levelDb) Close() {
-	d.DB.Close()
+// Close shuts down the database.
+func (d Database) Close() {
+	d.wo.Close()
+	d.db.Close()
+}
+
+// Compact runs log and sstable compaction.
+func (d Database) Compact() {
+	d.db.CompactRange(levigo.Range{})
 }
