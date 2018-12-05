@@ -7,7 +7,7 @@ go:
 
 script:
   - go test -v ./...
-  - go build
+  - go build -v
   - ./bench.sh ./specious-db -entries 10000
 
 addons:
