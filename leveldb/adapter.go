@@ -26,11 +26,12 @@ func levelDbOpts() *levigo.Options {
 	opts := levigo.NewOptions()
 	opts.SetCreateIfMissing(true)
 	opts.SetCompression(levigo.NoCompression)
+
+	// performance-related configuration
 	// NOTE: leveldb may truncate the cache size to something higher
 	cache := levigo.NewLRUCache(0)
 	opts.SetCache(cache)
-	// NOTE: leveldb may have a minimum write buffer size
-	opts.SetWriteBufferSize(0)
+
 	return opts
 }
 

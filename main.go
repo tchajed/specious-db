@@ -42,6 +42,7 @@ func main() {
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
 	var compactEvery int
 	flag.IntVar(&compactEvery, "compact-every", 50000, "compact database after x entries")
+	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
 	flag.Parse()
 
@@ -66,6 +67,7 @@ func main() {
 		{"database", *dbType},
 		{"entries", fmt.Sprintf("%d", *numEntries)},
 		{"compaction every", fmt.Sprintf("%d", compactEvery)},
+		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
 		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
 	} {
 		fmt.Printf("%20s %s\n", info.Key+":", info.Value)
@@ -81,9 +83,12 @@ func main() {
 		db.Put(k, v)
 		s.FinishedSingleOp(8 + len(v))
 	}
-	db.Close()
+	if *finalCompact {
+		db.Compact()
+	}
 	s.Done()
 
+	db.Close()
 	s.Report()
 	if *deleteDatabase {
 		os.RemoveAll(dbPath)

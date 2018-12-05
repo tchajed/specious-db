@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 
@@ -138,8 +139,26 @@ func (t Table) Keys() KeyRange {
 	return t.index.Keys()
 }
 
+type bufFile struct {
+	f fs.File
+	*bufio.Writer
+}
+
+func (f bufFile) Close() {
+	f.Writer.Flush()
+	err := f.f.Close()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func newBufferedFile(f fs.File, size int) bufFile {
+	buf := bufio.NewWriterSize(f, 4*1024)
+	return bufFile{f, buf}
+}
+
 type tableWriter struct {
-	f            fs.File
+	f            bufFile
 	w            Encoder
 	currentIndex *indexEntry
 	// cache of entries written, to initialize the in-memory table upon
@@ -148,9 +167,10 @@ type tableWriter struct {
 }
 
 func newTableWriter(f fs.File) *tableWriter {
+	bw := newBufferedFile(f, 4*1024)
 	return &tableWriter{
-		f: f,
-		w: newEncoder(f),
+		f: bw,
+		w: newEncoder(bw),
 	}
 }
 
@@ -205,9 +225,6 @@ func (w tableWriter) Close() []indexEntry {
 	}
 	indexHandle := SliceHandle{indexStart, uint32(w.offset() - indexStart)}
 	w.w.Handle(indexHandle)
-	err := w.f.Close()
-	if err != nil {
-		panic(err)
-	}
+	w.f.Close()
 	return w.entries
 }
