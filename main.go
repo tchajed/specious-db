@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/tchajed/specious-db/db"
@@ -60,35 +63,40 @@ func run(b Benchmark) {
 	s.Report()
 }
 
-func main() {
-	dbType := flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
-	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
-	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
-	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
-	random := flag.Bool("random", false, "also run fill/read with randomly ordered keys")
-	flag.Parse()
+var dbType = flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
+var numEntries = flag.Int("entries", 1000000, "number of entries to put in database")
+var finalCompact = flag.Bool("final-compact", false, "force a compaction at end of benchmark")
+var deleteDatabase = flag.Bool("delete-db", false, "delete database directory on completion")
+var random = flag.Bool("random", false, "also run fill/read with randomly ordered keys")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory cpu profile to `file`")
 
-	if len(flag.Args()) > 0 {
-		fmt.Fprintln(os.Stderr, "extra command line arguments", flag.Args())
-		flag.Usage()
-		os.Exit(1)
+func writeMemProfile(fname string) {
+	f, err := os.Create(fname)
+	if err != nil {
+		log.Fatal("could not create memory profile: ", err)
 	}
-
-	totalBytes := float64(*numEntries * (8 + 100))
-	for _, info := range []struct {
-		Key   string
-		Value string
-	}{
-		{"database", *dbType},
-		{"entries", showNum(*numEntries)},
-		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
-		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
-	} {
-		fmt.Printf("%20s %s\n", info.Key+":", info.Value)
+	runtime.GC() // get up-to-date statistics
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		log.Fatal("could not write memory profile: ", err)
 	}
-	fmt.Println(strings.Repeat("-", 30))
+	f.Close()
+}
 
-	db := initDb(*dbType)
+func runBenchmarks(db database) {
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+	if *memprofile != "" {
+		defer writeMemProfile(*memprofile)
+	}
 
 	run(Benchmark{"fillseq", func(s BenchState) {
 		for i := 0; i < *numEntries; i++ {
@@ -137,8 +145,35 @@ func main() {
 			}
 		}})
 	}
+}
 
+func main() {
+	flag.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Fprintln(os.Stderr, "extra command line arguments", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	totalBytes := float64(*numEntries * (8 + 100))
+	for _, info := range []struct {
+		Key   string
+		Value string
+	}{
+		{"database", *dbType},
+		{"entries", showNum(*numEntries)},
+		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
+		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
+	} {
+		fmt.Printf("%20s %s\n", info.Key+":", info.Value)
+	}
+	fmt.Println(strings.Repeat("-", 30))
+
+	db := initDb(*dbType)
+	runBenchmarks(db)
 	db.Close()
+
 	if *deleteDatabase {
 		os.RemoveAll(dbPath)
 	}
