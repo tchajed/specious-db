@@ -1,7 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/tchajed/specious-db/db"
 	"github.com/tchajed/specious-db/fs"
@@ -30,31 +33,51 @@ func (d noopdb) Delete(k db.Key)            {}
 func (d noopdb) Close()                     {}
 func (d noopdb) Compact()                   {}
 
-// TODO: add command-line arguments
 func main() {
-	databaseType := "specious"
-	// databaseType := "leveldb"
-	// databaseType := "noop"
+	dbType := flag.String("db", "specious", "database to use (specious|leveldb|noop)")
+	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
+	var compactEvery int
+	flag.IntVar(&compactEvery, "compact-every", 50000, "compact database after x entries")
+	flag.Parse()
+
 	var db database
-	switch databaseType {
+	switch *dbType {
 	case "specious":
 		db = speciousDb()
 	case "leveldb":
 		db = levelDb()
 	case "noop":
 		db = noopdb{}
+	default:
+		fmt.Fprintln(os.Stderr, "unknown database")
+		os.Exit(1)
 	}
+
+	totalBytes := float64(*numEntries * (8 + 100))
+	for _, info := range []struct {
+		Key   string
+		Value string
+	}{
+		{"database", *dbType},
+		{"entries", fmt.Sprintf("%d", *numEntries)},
+		{"compaction every", fmt.Sprintf("%d", compactEvery)},
+		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
+	} {
+		fmt.Printf("%20s %s\n", info.Key+":", info.Value)
+	}
+	fmt.Println(strings.Repeat("-", 30))
+
 	s := NewBench()
-	for i := 0; i < 1000000; i++ {
-		if databaseType == "specious" && i%100000 == 0 && i != 0 {
+	for i := 0; i < *numEntries; i++ {
+		if compactEvery > 0 && i%compactEvery == 0 && i != 0 {
 			db.Compact()
 		}
 		k, v := s.RandomKey(), s.Value()
 		db.Put(k, v)
 		s.FinishedSingleOp(8 + len(v))
 	}
-	s.Done()
-	fmt.Println(databaseType, "database")
-	s.Report()
 	db.Close()
+	s.Done()
+
+	s.Report()
 }
