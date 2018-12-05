@@ -14,24 +14,24 @@ import (
 
 const dbPath = "benchmark.db"
 
-func speciousDb() *db.Database {
-	os.RemoveAll(dbPath)
-	fs := fs.DirFs(dbPath)
-	return db.Init(fs)
-}
-
-func levelDb() *leveldb.Database {
-	os.RemoveAll(dbPath)
-	return leveldb.New(dbPath)
-}
-
-func memDb() *memdb.Database {
-	return memdb.New()
-}
-
 type database interface {
 	db.Store
 	Compact()
+}
+
+func initDb(dbType string) database {
+	switch dbType {
+	case "specious":
+		os.RemoveAll(dbPath)
+		fs := fs.DirFs(dbPath)
+		return db.Init(fs)
+	case "leveldb":
+		os.RemoveAll(dbPath)
+		return leveldb.New(dbPath)
+	case "mem":
+		return memdb.New()
+	}
+	panic(fmt.Errorf("unknown database type %s", dbType))
 }
 
 func showNum(i int) string {
@@ -84,18 +84,7 @@ func main() {
 	}
 	fmt.Println(strings.Repeat("-", 30))
 
-	var db database
-	switch *dbType {
-	case "specious":
-		db = speciousDb()
-	case "leveldb":
-		db = levelDb()
-	case "mem":
-		db = memDb()
-	default:
-		fmt.Fprintln(os.Stderr, "unknown database")
-		os.Exit(1)
-	}
+	db := initDb(*dbType)
 
 	run(Benchmark{"fillseq", func(s BenchState) {
 		for i := 0; i < *numEntries; i++ {
@@ -111,6 +100,32 @@ func main() {
 	run(Benchmark{"readseq", func(s BenchState) {
 		for i := 0; i < *numEntries; i++ {
 			v := db.Get(s.NextKey())
+			if v.Present {
+				s.FinishedSingleOp(8 + len(v.Value))
+			}
+		}
+	}})
+
+	db.Close()
+	db = initDb(*dbType)
+	fmt.Println("=== re-init")
+
+	run(Benchmark{"fillrandom", func(s BenchState) {
+		for i := 0; i < *numEntries; i++ {
+			k, v := s.RandomKey(*numEntries), s.Value()
+			db.Put(k, v)
+			s.FinishedSingleOp(8 + len(v))
+		}
+		if *finalCompact {
+			db.Compact()
+		}
+	}})
+
+	run(Benchmark{"readrandom", func(s BenchState) {
+		// read in a different random order
+		s.ReSeed(1)
+		for i := 0; i < *numEntries; i++ {
+			v := db.Get(s.RandomKey(*numEntries))
 			if v.Present {
 				s.FinishedSingleOp(8 + len(v.Value))
 			}

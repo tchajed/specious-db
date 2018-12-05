@@ -16,14 +16,19 @@ func newGenerator() *generator {
 	return &generator{r, 0}
 }
 
+func (g generator) ReSeed(i int64) {
+	g.Rand.Seed(i)
+}
+
 func (g *generator) NextKey() uint64 {
 	k := g.key
 	g.key++
 	return k
 }
 
-func (g generator) RandomKey() uint64 {
-	return g.Rand.Uint64()
+func (g generator) RandomKey(max int) uint64 {
+	n := g.Rand.Int63n(int64(max))
+	return uint64(n)
 }
 
 func (g generator) Value() []byte {
