@@ -83,8 +83,8 @@ func (l dbLog) Get(k Key) MaybeValue {
 }
 
 func (l dbLog) logUpdates(es []KeyUpdate) {
-	var b bytes.Buffer
-	w := newEncoder(&b)
+	b := bytes.NewBuffer(make([]byte, 0, 8+len(es[0].Value)))
+	w := newEncoder(b)
 	for _, e := range es {
 		w.KeyUpdate(e)
 	}
