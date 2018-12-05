@@ -4,9 +4,9 @@
 
 set -e
 
-{ find . -name '*_test.go'; find cmd -name '*.go'; ls fs/afero_filesys.go; } > .ignored-files.txt
+find . -name '*_test.go' > .ignored-files.txt
 
 CLOC_ARGS="--quiet --hide-rate --by-file"
-cloc $CLOC_ARGS --include-ext='go' --exclude-list-file=.ignored-files.txt . | tail +2
+cloc $CLOC_ARGS --include-ext='go' --exclude-list-file=.ignored-files.txt db bin log fs/fs.go | tail +2
 
 rm .ignored-files.txt
