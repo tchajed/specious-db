@@ -65,6 +65,7 @@ func run(b Benchmark) {
 
 var dbType = flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
 var numEntries = flag.Int("entries", 1000000, "number of entries to put in database")
+var numReads = flag.Int("reads", -1, "number of reads to perform (-1 to copy entries)")
 var finalCompact = flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 var deleteDatabase = flag.Bool("delete-db", false, "delete database directory on completion")
 var random = flag.Bool("random", false, "also run fill/read with randomly ordered keys")
@@ -110,7 +111,7 @@ func runBenchmarks(db database) {
 	}})
 
 	run(Benchmark{"readseq", func(s BenchState) {
-		for i := 0; i < *numEntries; i++ {
+		for i := 0; i < *numReads; i++ {
 			v := db.Get(s.NextKey())
 			if v.Present {
 				s.FinishedSingleOp(8 + len(v.Value))
@@ -154,6 +155,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "extra command line arguments", flag.Args())
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if *numReads == -1 {
+		*numReads = *numEntries
 	}
 
 	totalBytes := float64(*numEntries * (8 + 100))
