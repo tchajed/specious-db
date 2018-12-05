@@ -25,6 +25,9 @@ func initDb(dbType string) database {
 		os.RemoveAll(dbPath)
 		fs := fs.DirFs(dbPath)
 		return db.Init(fs)
+	case "specious-mem":
+		fs := fs.MemFs()
+		return db.Init(fs)
 	case "leveldb":
 		os.RemoveAll(dbPath)
 		return leveldb.New(dbPath)
@@ -58,10 +61,11 @@ func run(b Benchmark) {
 }
 
 func main() {
-	dbType := flag.String("db", "specious", "database to use (specious|leveldb|mem)")
+	dbType := flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
 	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
+	random := flag.Bool("random", false, "also run fill/read with randomly ordered keys")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -106,31 +110,33 @@ func main() {
 		}
 	}})
 
-	db.Close()
-	db = initDb(*dbType)
-	fmt.Println("=== re-init")
+	if *random {
+		db.Close()
+		db = initDb(*dbType)
+		fmt.Println("=== re-init")
 
-	run(Benchmark{"fillrandom", func(s BenchState) {
-		for i := 0; i < *numEntries; i++ {
-			k, v := s.RandomKey(*numEntries), s.Value()
-			db.Put(k, v)
-			s.FinishedSingleOp(8 + len(v))
-		}
-		if *finalCompact {
-			db.Compact()
-		}
-	}})
-
-	run(Benchmark{"readrandom", func(s BenchState) {
-		// read in a different random order
-		s.ReSeed(1)
-		for i := 0; i < *numEntries; i++ {
-			v := db.Get(s.RandomKey(*numEntries))
-			if v.Present {
-				s.FinishedSingleOp(8 + len(v.Value))
+		run(Benchmark{"fillrandom", func(s BenchState) {
+			for i := 0; i < *numEntries; i++ {
+				k, v := s.RandomKey(*numEntries), s.Value()
+				db.Put(k, v)
+				s.FinishedSingleOp(8 + len(v))
 			}
-		}
-	}})
+			if *finalCompact {
+				db.Compact()
+			}
+		}})
+
+		run(Benchmark{"readrandom", func(s BenchState) {
+			// read in a different random order
+			s.ReSeed(1)
+			for i := 0; i < *numEntries; i++ {
+				v := db.Get(s.RandomKey(*numEntries))
+				if v.Present {
+					s.FinishedSingleOp(8 + len(v.Value))
+				}
+			}
+		}})
+	}
 
 	db.Close()
 	if *deleteDatabase {

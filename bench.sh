@@ -30,11 +30,11 @@ main() {
 
   echo
   info "specious"
-  "$BENCH_BIN" -db specious -final-compact -delete-db "$@"
+  "$BENCH_BIN" -db specious -final-compact -delete-db -random=true "$@"
 
   echo
   info "leveldb"
-  "$BENCH_BIN" -db leveldb -final-compact -delete-db "$@"
+  "$BENCH_BIN" -db leveldb -final-compact -delete-db -random=true "$@"
 }
 
 main "$@"
