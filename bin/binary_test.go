@@ -2,11 +2,36 @@ package bin
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func ExampleEncodeDecode() {
+	var b bytes.Buffer
+	e := NewEncoder(&b)
+	e.Uint64(42)
+	data := b.Bytes()
+	r := NewDecoder(data)
+	fmt.Println(r.Uint64())
+	// Output: 42
+}
+
+func ExampleEncode() {
+	var b bytes.Buffer
+	e := NewEncoder(&b)
+	e.Uint32(0x1c34)
+	fmt.Println(b.Bytes())
+	// Output: [52 28 0 0]
+}
+
+func ExampleDecode() {
+	r := NewDecoder([]byte{0x34, 0x1c, 0, 0})
+	fmt.Printf("%#x", r.Uint32())
+	// Output: 0x1c34
+}
 
 func testRoundtrip(t *testing.T, enc func(e *Encoder), dec func(d *Decoder)) {
 	var b bytes.Buffer

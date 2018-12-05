@@ -1,3 +1,4 @@
+// Package bin provides support for encoding and decoding binary data.
 package bin
 
 import (
