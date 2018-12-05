@@ -51,8 +51,9 @@ func main() {
 		}
 		k, v := s.RandomKey(), s.Value()
 		db.Put(k, v)
-		s.finishOp(8 + len(v))
+		s.FinishedSingleOp(8 + len(v))
 	}
+	s.Done()
 	fmt.Println(databaseType, "database")
 	s.Report()
 	db.Close()
