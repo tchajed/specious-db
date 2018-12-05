@@ -107,17 +107,6 @@ func (fs aferoFs) AtomicCreateWith(fname string, data []byte) {
 	}
 }
 
-func (fs aferoFs) Debug() {
-	fs.fs.Walk("/", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Printf("%-20s error %v\n", path, err)
-			return err
-		}
-		fmt.Printf("%-20s %3d bytes\n", path, info.Size())
-		return nil
-	})
-}
-
 func deleteTmpFiles(fs afero.Fs) {
 	tmpFiles, err := afero.Glob(fs, abs("*.tmp"))
 	if err != nil {

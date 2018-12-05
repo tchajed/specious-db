@@ -58,7 +58,7 @@ func (suite RestartSuite) Restart() {
 		suite.db.Database.Close()
 		suite.db.Database = Open(suite.fs)
 	}
-	// suite.fs.Debug()
+	// fs.Debug(suite.fs)
 }
 
 func (suite RestartSuite) TestGet() {

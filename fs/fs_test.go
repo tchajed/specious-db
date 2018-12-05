@@ -88,3 +88,11 @@ func (suite FsSuite) TestReadAt() {
 	suite.Equal([]byte{2}, f.ReadAt(1, 1))
 	suite.Equal([]byte{2, 3}, f.ReadAt(1, 2))
 }
+
+func (suite FsSuite) TestDeleteAll() {
+	suite.CreateFile("foo", nil)
+	suite.CreateFile("bar", nil)
+	suite.Equal(2, len(suite.fs.List()))
+	DeleteAll(suite.fs)
+	suite.Empty(suite.fs.List())
+}

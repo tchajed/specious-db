@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -30,9 +31,6 @@ type Filesys interface {
 
 	Open(fname string) ReadFile
 	List() []string
-	// Debug is a convenience to list out the entire file system for debugging
-	// (technically this can be implemented on top of the above API)
-	Debug()
 
 	// modifications
 
@@ -40,4 +38,18 @@ type Filesys interface {
 	Delete(fname string)
 	Truncate(fname string)
 	AtomicCreateWith(fname string, data []byte)
+}
+
+func DeleteAll(fs Filesys) {
+	for _, f := range fs.List() {
+		fs.Delete(f)
+	}
+}
+
+func Debug(fs Filesys) {
+	for _, fname := range fs.List() {
+		f := fs.Open(fname)
+		fmt.Printf("%-20s %3d bytes\n", fname, f.Size())
+		f.Close()
+	}
 }
