@@ -5,7 +5,12 @@ go:
   - "1.10.x"
   - "1.11.x"
 
-script: go test -v ./...
+install:
+  - go build
+
+script:
+  - go test -v ./...
+  - ./bench.sh ./specious-db -entries 10000
 
 addons:
   apt:
