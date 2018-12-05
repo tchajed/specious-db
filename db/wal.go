@@ -25,6 +25,9 @@ import (
 type dbLog struct {
 	log   log.Writer
 	cache entrySearchTree
+	// an estimate of how big the log is (tracks puts, but does not account for
+	// encoding overhead or subtract for coalesced update)
+	sizeBytes int
 }
 
 type entrySearchTree struct {
@@ -88,9 +91,10 @@ func (l dbLog) logUpdates(es []KeyUpdate) {
 	l.log.Add(b.Bytes())
 }
 
-func (l dbLog) Put(k Key, v Value) {
+func (l *dbLog) Put(k Key, v Value) {
 	l.logUpdates([]KeyUpdate{{k, SomeValue(v)}})
 	l.cache.Put(k, v)
+	l.sizeBytes += 8 + len(v)
 }
 
 func (l dbLog) Delete(k Key) {
@@ -102,10 +106,14 @@ func (l dbLog) Updates() []KeyUpdate {
 	return l.cache.Updates()
 }
 
-func initLog(fs fs.Filesys) dbLog {
+func (l dbLog) SizeEstimate() int {
+	return l.sizeBytes
+}
+
+func initLog(fs fs.Filesys) *dbLog {
 	f := fs.Create("log")
 	log := log.New(f)
-	return dbLog{log, newSearchTree()}
+	return &dbLog{log, newSearchTree(), 0}
 }
 
 func recoverUpdates(fs fs.Filesys) []KeyUpdate {

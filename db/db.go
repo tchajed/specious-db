@@ -6,7 +6,7 @@ import (
 
 type Database struct {
 	fs  fs.Filesys
-	log dbLog
+	log *dbLog
 	mf  Manifest
 }
 
@@ -20,6 +20,9 @@ func (db *Database) Get(k Key) MaybeValue {
 
 func (db *Database) Put(k Key, v Value) {
 	db.log.Put(k, v)
+	if db.log.SizeEstimate() >= 4*1024*1024 {
+		db.compactLog()
+	}
 }
 
 func (db *Database) Delete(k Key) {
