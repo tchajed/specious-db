@@ -8,29 +8,33 @@ info() {
   echo -e "\033[1;37m${1}\033[0m"
 }
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-
-if [ -n "$1" ]; then
-  BENCH_BIN="$1"
-  if ! [ -f "$BENCH_BIN" ] && ! which "$BENCH_BIN" >/dev/null; then
-    echo "could not find executable $BENCH_BIN" 1>&2
-    exit 1
+main() {
+  DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+  if [ -n "$1" ]; then
+    BENCH_BIN="$1"
+    shift
+    if ! [ -f "$BENCH_BIN" ] && ! which "$BENCH_BIN" >/dev/null; then
+      echo "could not find executable $BENCH_BIN" 1>&2
+      exit 1
+    fi
+  else
+    old_dir="$PWD"
+    cd "$DIR"
+    go build
+    cd "$old_dir"
+    BENCH_BIN="${DIR}/specious-db"
   fi
-else
-  old_dir="$PWD"
-  cd "$DIR"
-  go build
-  cd "$old_dir"
-  BENCH_BIN="${DIR}/specious-db"
-fi
 
-info "noop"
-"$BENCH_BIN" -db noop
+  info "noop"
+  "$BENCH_BIN" -db noop "$@"
 
-echo
-info "specious"
-"$BENCH_BIN" -db specious -compact-every 100000 -final-compact true -delete-db
+  echo
+  info "specious"
+  "$BENCH_BIN" -db specious -compact-every 100000 -final-compact -delete-db "$@"
 
-echo
-info "leveldb"
-"$BENCH_BIN" -db leveldb -compact-every 0 -final-compact true -delete-db
+  echo
+  info "leveldb"
+  "$BENCH_BIN" -db leveldb -compact-every 0 -final-compact -delete-db "$@"
+}
+
+main "$@"

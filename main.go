@@ -37,6 +37,17 @@ func (d noopdb) Delete(k db.Key)            {}
 func (d noopdb) Close()                     {}
 func (d noopdb) Compact()                   {}
 
+func showNum(i int) string {
+	if i > 2000 {
+		if i%1000 == 0 {
+			return fmt.Sprintf("%dK", i/1000)
+		} else {
+			return fmt.Sprintf("%.1fK", float64(i)/1000)
+		}
+	}
+	return fmt.Sprintf("%d", i)
+}
+
 func main() {
 	dbType := flag.String("db", "specious", "database to use (specious|leveldb|noop)")
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
@@ -65,8 +76,8 @@ func main() {
 		Value string
 	}{
 		{"database", *dbType},
-		{"entries", fmt.Sprintf("%d", *numEntries)},
-		{"compaction every", fmt.Sprintf("%d", compactEvery)},
+		{"entries", showNum(*numEntries)},
+		{"compaction every", showNum(compactEvery)},
 		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
 		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
 	} {

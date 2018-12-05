@@ -75,7 +75,7 @@ func (s stats) MegabytesPerSec() float64 {
 }
 
 func (s stats) Report() {
-	fmt.Printf("%6.3f micros/op; %6.1f MB/s\n",
+	fmt.Printf("%7.3f micros/op; %6.1f MB/s\n",
 		s.MicrosPerOp(),
 		s.MegabytesPerSec())
 }
