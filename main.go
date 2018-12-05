@@ -41,9 +41,8 @@ func showNum(i int) string {
 	if i > 2000 {
 		if i%1000 == 0 {
 			return fmt.Sprintf("%dK", i/1000)
-		} else {
-			return fmt.Sprintf("%.1fK", float64(i)/1000)
 		}
+		return fmt.Sprintf("%.1fK", float64(i)/1000)
 	}
 	return fmt.Sprintf("%d", i)
 }
@@ -56,6 +55,12 @@ func main() {
 	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
 	flag.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Fprintln(os.Stderr, "extra command line arguments", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	var db database
 	switch *dbType {
