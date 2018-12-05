@@ -12,14 +12,22 @@ import (
 
 type generator struct {
 	*rand.Rand
+	key uint64
 }
 
-func newGenerator() generator {
-	return generator{rand.New(rand.NewSource(0))}
+func newGenerator() *generator {
+	r := rand.New(rand.NewSource(0))
+	return &generator{r, 0}
 }
 
-func (g generator) Key() db.Key {
-	return g.Uint64()
+func (g *generator) NextKey() db.Key {
+	k := g.key
+	g.key++
+	return k
+}
+
+func (g generator) RandomKey() db.Key {
+	return g.Rand.Uint64()
 }
 
 func (g generator) Value() db.Value {
@@ -92,8 +100,9 @@ func main() {
 		if databaseType == "specious" && i%100000 == 0 && i != 0 {
 			db.Compact()
 		}
-		db.Put(g.Key(), g.Value())
-		s.finishOp(8 + 100)
+		k, v := g.RandomKey(), g.Value()
+		db.Put(k, v)
+		s.finishOp(8 + len(v))
 	}
 	fmt.Println(databaseType, "database")
 	s.Report()
