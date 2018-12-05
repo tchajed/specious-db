@@ -11,13 +11,17 @@ import (
 	"github.com/tchajed/specious-db/leveldb"
 )
 
+const dbPath = "benchmark.db"
+
 func speciousDb() *db.Database {
-	fs := fs.DirFs("benchmark.db")
+	os.RemoveAll(dbPath)
+	fs := fs.DirFs(dbPath)
 	return db.Init(fs)
 }
 
 func levelDb() *leveldb.Database {
-	return leveldb.New("benchmark.db")
+	os.RemoveAll(dbPath)
+	return leveldb.New(dbPath)
 }
 
 type database interface {
@@ -38,6 +42,7 @@ func main() {
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
 	var compactEvery int
 	flag.IntVar(&compactEvery, "compact-every", 50000, "compact database after x entries")
+	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
 	flag.Parse()
 
 	var db database
@@ -80,4 +85,7 @@ func main() {
 	s.Done()
 
 	s.Report()
+	if *deleteDatabase {
+		os.RemoveAll(dbPath)
+	}
 }
