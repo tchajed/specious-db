@@ -2,7 +2,9 @@ package db
 
 import (
 	"fmt"
+	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tchajed/specious-db/fs"
 )
@@ -40,6 +42,10 @@ func (s StringStore) Put(k int, v string) {
 	}
 }
 
+func newStringStore(db *Database) StringStore {
+	return StringStore{db, make(map[int]string)}
+}
+
 type DbSuite struct {
 	suite.Suite
 	fs fs.Filesys
@@ -48,7 +54,7 @@ type DbSuite struct {
 
 func (suite *DbSuite) SetupTest() {
 	suite.fs = fs.MemFs()
-	suite.db = StringStore{Init(suite.fs), make(map[int]string)}
+	suite.db = newStringStore(Init(suite.fs))
 }
 
 func (suite *DbSuite) putValues(min, max int) {
@@ -59,4 +65,14 @@ func (suite *DbSuite) putValues(min, max int) {
 
 func (suite *DbSuite) check(key int, msgAndArgs ...interface{}) {
 	suite.Equal(suite.db.Expected(key), suite.db.Get(key), msgAndArgs...)
+}
+
+func TestDoubleInit(t *testing.T) {
+	assert := assert.New(t)
+	fs := fs.MemFs()
+	db := newStringStore(Init(fs))
+	db.Put(1, "val 1")
+	db.Close()
+	db = newStringStore(Init(fs))
+	assert.Equal(missing, db.Get(1))
 }
