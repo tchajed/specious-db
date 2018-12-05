@@ -13,3 +13,5 @@
 
 # database directory created by benchmarking tool
 benchmark.db/
+# compiled binary
+/specious-db

@@ -29,9 +29,11 @@ func (db *Database) Delete(k Key) {
 var _ Store = &Database{}
 
 func Init(fs fs.Filesys) *Database {
+	for _, f := range fs.List() {
+		fs.Delete(f)
+	}
 	mf := initManifest(fs)
 	log := initLog(fs)
-	mf.cleanup()
 	return &Database{fs, log, mf}
 }
 
