@@ -52,12 +52,15 @@ func (w Encoder) BytesWritten() int {
 
 // Bytes is a primitive encoder that copies bytes.
 func (w *Encoder) Bytes(b []byte) {
-	for len(b) > 0 {
+	for {
 		n, err := w.w.Write(b)
 		if err != nil {
 			panic(err)
 		}
 		w.bytesWritten += n
+		if n == len(b) {
+			return
+		}
 		b = b[n:]
 	}
 }
