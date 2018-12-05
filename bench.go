@@ -50,10 +50,10 @@ func (s *stats) FinishedSingleOp(bytes int) {
 	s.Bytes += bytes
 }
 
-// Done marks the benchmark finished.
+// done marks the benchmark finished.
 //
 // Records a final timestamp in a stats object.
-func (s *stats) Done() {
+func (s *stats) done() {
 	if s.End != nil {
 		panic("stats object marked done multiple times")
 	}
@@ -92,6 +92,8 @@ func NewBench(name string) BenchState {
 	return BenchState{name, newGenerator(), newStats()}
 }
 
+// Report finishes the benchmark and prints final statistics.
 func (s BenchState) Report() {
+	s.stats.done()
 	fmt.Printf("%-15s : %s\n", s.name, s.stats.formatStats())
 }

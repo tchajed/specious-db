@@ -73,19 +73,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var db database
-	switch *dbType {
-	case "specious":
-		db = speciousDb()
-	case "leveldb":
-		db = levelDb()
-	case "noop":
-		db = noopdb{}
-	default:
-		fmt.Fprintln(os.Stderr, "unknown database")
-		os.Exit(1)
-	}
-
 	totalBytes := float64(*numEntries * (8 + 100))
 	for _, info := range []struct {
 		Key   string
@@ -100,16 +87,37 @@ func main() {
 	}
 	fmt.Println(strings.Repeat("-", 30))
 
+	var db database
+	switch *dbType {
+	case "specious":
+		db = speciousDb()
+	case "leveldb":
+		db = levelDb()
+	case "noop":
+		db = noopdb{}
+	default:
+		fmt.Fprintln(os.Stderr, "unknown database")
+		os.Exit(1)
+	}
+
 	run(Benchmark{"fillseq", func(s BenchState) {
 		for i := 0; i < *numEntries; i++ {
-			k, v := s.RandomKey(), s.Value()
+			k, v := s.NextKey(), s.Value()
 			db.Put(k, v)
 			s.FinishedSingleOp(8 + len(v))
 		}
 		if *finalCompact {
 			db.Compact()
 		}
-		s.Done()
+	}})
+
+	run(Benchmark{"readseq", func(s BenchState) {
+		for i := 0; i < *numEntries; i++ {
+			v := db.Get(s.NextKey())
+			if v.Present {
+				s.FinishedSingleOp(8 + len(v.Value))
+			}
+		}
 	}})
 
 	db.Close()
