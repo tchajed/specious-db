@@ -25,8 +25,8 @@ main() {
     BENCH_BIN="${DIR}/specious-db"
   fi
 
-  info "noop"
-  "$BENCH_BIN" -db noop "$@"
+  info "mem"
+  "$BENCH_BIN" -db mem "$@"
 
   echo
   info "specious"

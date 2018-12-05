@@ -2,11 +2,11 @@ package memdb
 
 import "github.com/tchajed/specious-db/db"
 
-type Memdb struct {
+type Database struct {
 	m map[db.Key]db.Value
 }
 
-func (s Memdb) Get(k db.Key) db.MaybeValue {
+func (s Database) Get(k db.Key) db.MaybeValue {
 	val, ok := s.m[k]
 	if !ok {
 		return db.NoValue
@@ -14,18 +14,18 @@ func (s Memdb) Get(k db.Key) db.MaybeValue {
 	return db.SomeValue(val)
 }
 
-func (s *Memdb) Put(k db.Key, v db.Value) {
+func (s *Database) Put(k db.Key, v db.Value) {
 	s.m[k] = v
 }
 
-func (s *Memdb) Delete(k db.Key) {
+func (s *Database) Delete(k db.Key) {
 	delete(s.m, k)
 }
 
-func (s *Memdb) Close() {}
+func (s *Database) Close() {}
 
-func (s *Memdb) Compact() {}
+func (s *Database) Compact() {}
 
-func New() *Memdb {
-	return &Memdb{make(map[db.Key]db.Value)}
+func New() *Database {
+	return &Database{make(map[db.Key]db.Value)}
 }

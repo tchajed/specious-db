@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tchajed/specious-db/db"
+	"github.com/tchajed/specious-db/db/memdb"
 	"github.com/tchajed/specious-db/fs"
 	"github.com/tchajed/specious-db/leveldb"
 )
@@ -24,18 +25,14 @@ func levelDb() *leveldb.Database {
 	return leveldb.New(dbPath)
 }
 
+func memDb() *memdb.Database {
+	return memdb.New()
+}
+
 type database interface {
 	db.Store
 	Compact()
 }
-
-type noopdb struct{}
-
-func (d noopdb) Get(k db.Key) db.MaybeValue { return db.NoValue }
-func (d noopdb) Put(k db.Key, v db.Value)   {}
-func (d noopdb) Delete(k db.Key)            {}
-func (d noopdb) Close()                     {}
-func (d noopdb) Compact()                   {}
 
 func showNum(i int) string {
 	if i > 2000 {
@@ -61,7 +58,7 @@ func run(b Benchmark) {
 }
 
 func main() {
-	dbType := flag.String("db", "specious", "database to use (specious|leveldb|noop)")
+	dbType := flag.String("db", "specious", "database to use (specious|leveldb|mem)")
 	numEntries := flag.Int("entries", 1000000, "number of entries to put in database")
 	finalCompact := flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 	deleteDatabase := flag.Bool("delete-db", false, "delete database directory on completion")
@@ -93,8 +90,8 @@ func main() {
 		db = speciousDb()
 	case "leveldb":
 		db = levelDb()
-	case "noop":
-		db = noopdb{}
+	case "mem":
+		db = memDb()
 	default:
 		fmt.Fprintln(os.Stderr, "unknown database")
 		os.Exit(1)
