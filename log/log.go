@@ -44,14 +44,13 @@ func New(f LogFile) Writer {
 	return Writer{f, bin.NewEncoder(f)}
 }
 
-func (l Writer) Add(data []byte) error {
+func (l Writer) Add(data []byte) {
 	buf := bytes.NewBuffer(make([]byte, 0, 1+2+len(data)+1))
 	localEnc := bin.NewEncoder(buf)
 	localEnc.Uint8(dataRecord)
 	localEnc.Array16(data)
 	localEnc.Uint8(commitRecord)
 	l.enc.Bytes(buf.Bytes())
-	return nil
 }
 
 func (l Writer) Close() {
