@@ -31,6 +31,8 @@ func levelDbOpts() *levigo.Options {
 	// NOTE: leveldb may truncate the cache size to something higher
 	cache := levigo.NewLRUCache(0)
 	opts.SetCache(cache)
+	// 4MB is the default
+	opts.SetWriteBufferSize(4 * 1024 * 1024)
 
 	return opts
 }

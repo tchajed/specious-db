@@ -167,7 +167,7 @@ type tableWriter struct {
 }
 
 func newTableWriter(f fs.File) *tableWriter {
-	bw := newBufferedFile(f, 4*1024)
+	bw := newBufferedFile(f, 4*1024*1024)
 	return &tableWriter{
 		f: bw,
 		w: newEncoder(bw),
