@@ -55,8 +55,8 @@ func (h SliceHandle) IsValid() bool {
 	return h.Length != 0
 }
 
-// TODO: make this an efficient data structure
 type tableIndex struct {
+	// entries are for sorted, disjoint ranges of keys
 	entries []indexEntry
 }
 
@@ -64,13 +64,34 @@ func newTableIndex(entries []indexEntry) tableIndex {
 	return tableIndex{entries}
 }
 
-func (i tableIndex) Get(k Key) SliceHandle {
-	for _, e := range i.entries {
-		if e.Keys.Contains(k) {
-			return e.Handle
-		}
+// binSearch returns the index of the entry in entries that contains k, or
+// -1 if k is not present
+func binSearch(entries []indexEntry, k Key) int {
+	if len(entries) == 0 {
+		return -1
 	}
-	return SliceHandle{}
+	mid := len(entries) / 2
+	if k < entries[mid].Keys.Min {
+		lowerHalf := entries[:mid]
+		return binSearch(lowerHalf, k)
+	} else if k > entries[mid].Keys.Max {
+		upperHalf := entries[mid+1:]
+		upperHalfIndex := binSearch(upperHalf, k)
+		if upperHalfIndex == -1 {
+			return -1
+		}
+		return upperHalfIndex + mid + 1
+	}
+	// mid.Keys.Contains(k)
+	return mid
+}
+
+func (i tableIndex) Get(k Key) SliceHandle {
+	index := binSearch(i.entries, k)
+	if index == -1 {
+		return SliceHandle{}
+	}
+	return i.entries[index].Handle
 }
 
 type indexEntry struct {
