@@ -182,6 +182,7 @@ type tableWriter struct {
 	f            bufFile
 	w            Encoder
 	currentIndex *indexEntry
+	currentKeys  int
 	// cache of entries written, to initialize the in-memory table upon
 	// finishing
 	entries []indexEntry
@@ -197,10 +198,6 @@ func newTableWriter(f fs.File) *tableWriter {
 
 func (w tableWriter) offset() uint64 {
 	return uint64(w.w.BytesWritten())
-}
-
-func (w tableWriter) currentIndexLength() uint32 {
-	return uint32(w.offset() - w.currentIndex.Handle.Offset)
 }
 
 // Put adds an update to an in-progress table.
@@ -220,8 +217,9 @@ func (w *tableWriter) Put(e KeyUpdate) {
 		panic("out-of-order updates to table")
 	}
 	w.currentIndex.Keys.Max = e.Key
+	w.currentKeys++
 	// periodic flush to create some index entries
-	if w.currentIndexLength() > 100 {
+	if w.currentKeys >= 10 {
 		w.flush()
 	}
 }
@@ -229,9 +227,11 @@ func (w *tableWriter) Put(e KeyUpdate) {
 // flush the current index entry
 func (w *tableWriter) flush() {
 	if w.currentIndex != nil {
-		w.currentIndex.Handle.Length = w.currentIndexLength()
+		length := w.offset() - w.currentIndex.Handle.Offset
+		w.currentIndex.Handle.Length = uint32(length)
 		w.entries = append(w.entries, *w.currentIndex)
 		w.currentIndex = nil
+		w.currentKeys = 0
 	}
 }
 
