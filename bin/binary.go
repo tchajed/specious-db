@@ -82,7 +82,9 @@ func (r *Decoder) Uint16() uint16 {
 
 // Uint8 decodes a uint8
 func (r *Decoder) Uint8() uint8 {
-	return r.Bytes(1)[0]
+	b := r.buf[0]
+	r.buf = r.buf[1:]
+	return b
 }
 
 // Array16 decodes an array prefixed with a 16-byte length.
@@ -115,7 +117,10 @@ func (w *Encoder) Uint16(v uint16) {
 
 // Uint8 encodes a uint8
 func (w *Encoder) Uint8(b uint8) {
-	w.Bytes([]byte{b})
+	_, err := w.w.Write([]byte{b})
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Array16 encodes an array prefixed with a 16-byte length.
