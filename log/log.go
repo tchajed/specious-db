@@ -18,6 +18,7 @@ package log
 //   then clear the log file.
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 
@@ -44,9 +45,12 @@ func New(f LogFile) Writer {
 }
 
 func (l Writer) Add(data []byte) error {
-	l.enc.Uint8(dataRecord)
-	l.enc.Array16(data)
-	l.enc.Uint8(commitRecord)
+	buf := bytes.NewBuffer(make([]byte, 0, 1+2+len(data)+1))
+	localEnc := bin.NewEncoder(buf)
+	localEnc.Uint8(dataRecord)
+	localEnc.Array16(data)
+	localEnc.Uint8(commitRecord)
+	l.enc.Bytes(buf.Bytes())
 	return nil
 }
 
