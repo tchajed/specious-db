@@ -29,11 +29,17 @@ main() {
 
   echo
   info "specious"
-  "$BENCH_BIN" -db specious -final-compact -delete-db "$@"
+
+  local benchmarks="fillseq,readseq,init,fillrandom,readrandom,\
+fs-write,fs-read"
+  "$BENCH_BIN" -db specious -final-compact -delete-db \
+               -benchmarks="$benchmarks" "$@"
 
   echo
   info "leveldb"
-  "$BENCH_BIN" -db leveldb -final-compact -delete-db "$@"
+  local benchmarks="fillseq,readseq,init,fillrandom,readrandom"
+  "$BENCH_BIN" -db leveldb -final-compact -delete-db \
+               -benchmarks="$benchmarks" "$@"
 }
 
 main "$@"

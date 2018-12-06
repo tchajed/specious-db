@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -71,6 +72,42 @@ func writeMemProfile(fname string) {
 	f.Close()
 }
 
+func writeFile(sz int, data []byte, s *stats, fs fs.Filesys) {
+	f := fs.Create("benchfile")
+	for sz > 0 {
+		buf := data
+		if sz < len(data) {
+			buf = buf[:sz]
+		}
+		n, err := f.Write(buf)
+		if err != nil {
+			panic(err)
+		}
+		s.FinishedSingleOp(n)
+		sz -= n
+	}
+	f.Close()
+}
+
+func readFile(chunkSize int, s *stats, fs fs.Filesys) {
+	buf := make([]byte, chunkSize)
+	f := fs.Open("benchfile")
+	defer func() {
+		f.Close()
+		fs.Delete("benchfile")
+	}()
+	for {
+		n, err := f.Read(buf)
+		s.FinishedSingleOp(n)
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func runBenchmarks(db database) {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
@@ -128,6 +165,16 @@ func runBenchmarks(db database) {
 			db.Close()
 			db = initDb(*dbType)
 			s.FinishedSingleOp(0)
+		case "fs-read":
+			// does not use database
+			fs := fs.DirFs(dbPath)
+			readFile(4096, s.stats, fs)
+		case "fs-write":
+			// does not use database
+			fs := fs.DirFs(dbPath)
+			data := make([]byte, 4096)
+			s.Read(data)
+			writeFile(16*1024*1024, data, s.stats, fs)
 		default:
 			fmt.Fprintf(os.Stderr, "unknown benchmark %s\n", name)
 			os.Exit(1)
