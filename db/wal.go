@@ -2,10 +2,9 @@ package db
 
 // Key-value store logging structure
 //
-// Provides a mini key-value store on top of a write-ahead log that only serves
-// Gets from the log (missing keys may have been migrated to SSTables)
-//
-// Log records are sequences of KeyUpdates.
+// Uses log.Writer to atomically store key-value updates. Each record is a
+// sequence of KeyUpdates. Serves reads from an in-memory cache of the log.
+// Deletes are recorded in order to shadow older puts found in tables.
 
 // NOTE: log format supports multiple key updates in a log record, but the
 // external interface doesn't provides this (the low-level logUpdates supports
@@ -39,12 +38,12 @@ func newSearchTree() entrySearchTree {
 	return entrySearchTree{make(map[Key]MaybeValue)}
 }
 
-func (t entrySearchTree) Get(k Key) MaybeValue {
-	v, ok := t.cache[k]
+func (t entrySearchTree) Get(k Key) MaybeMaybeValue {
+	mv, ok := t.cache[k]
 	if ok {
-		return v
+		return MaybeMaybeValue{true, mv}
 	} else {
-		return NoValue
+		return MaybeMaybeValue{Valid: false}
 	}
 }
 
@@ -69,7 +68,7 @@ func (t entrySearchTree) Updates() []KeyUpdate {
 	return updates
 }
 
-func (l dbLog) Get(k Key) MaybeValue {
+func (l dbLog) Get(k Key) MaybeMaybeValue {
 	return l.cache.Get(k)
 }
 

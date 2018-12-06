@@ -12,8 +12,8 @@ type Database struct {
 
 func (db *Database) Get(k Key) MaybeValue {
 	mv := db.log.Get(k)
-	if mv.Present {
-		return mv
+	if mv.Valid {
+		return mv.MaybeValue
 	}
 	return db.mf.Get(k)
 }

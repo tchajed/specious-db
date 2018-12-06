@@ -51,7 +51,7 @@ func (suite RestartSuite) Restart() {
 	switch suite.restartType {
 	case noRestart:
 	case compactButNoRestart:
-		suite.db.Compact()
+		suite.db.compactLog()
 	case forceRestart:
 		suite.db.Database = Open(suite.fs)
 	case cleanRestart:
@@ -69,17 +69,14 @@ func (suite RestartSuite) TestGet() {
 
 func (suite RestartSuite) TestGetFromTable() {
 	suite.db.Put(1, "val")
-	suite.db.Compact()
 	suite.Restart()
 	suite.check(1)
 }
 
 func (suite RestartSuite) TestMultipleTables() {
 	suite.db.Put(1, "val")
-	suite.db.Compact()
 	suite.Restart()
 	suite.db.Put(2, "val 2")
-	suite.db.Compact()
 	suite.Restart()
 	suite.check(1)
 	suite.check(2)
@@ -87,14 +84,11 @@ func (suite RestartSuite) TestMultipleTables() {
 
 func (suite RestartSuite) TestMultipleUpdates() {
 	suite.db.Put(1, "oldest")
-	suite.db.Compact()
 	suite.Restart()
 	suite.db.Put(1, "old")
 	suite.db.Put(2, "val 2")
-	suite.db.Compact()
 	suite.Restart()
 	suite.db.Put(1, missing)
-	suite.db.Compact()
 	suite.check(1)
 	suite.check(2)
 }
@@ -103,7 +97,6 @@ func (suite RestartSuite) TestIndexing() {
 	suite.db.Put(0, "table min")
 	suite.db.Put(1000, "table max")
 	suite.putValues(1, 100)
-	suite.db.Compact()
 	suite.db.Put(0, "table min")
 	suite.db.Put(1001, "table max")
 	suite.putValues(101, 200)
