@@ -82,6 +82,12 @@ func (s stats) MegabytesPerSec() float64 {
 }
 
 func (s stats) formatStats() string {
+	if s.Bytes == 0 {
+		if s.Ops == 1 {
+			return fmt.Sprintf("%7.3f micros", s.MicrosPerOp())
+		}
+		return fmt.Sprintf("%7.3f micros/op", s.MicrosPerOp())
+	}
 	return fmt.Sprintf("%7.3f micros/op; %6.1f MB/s",
 		s.MicrosPerOp(),
 		s.MegabytesPerSec())

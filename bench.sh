@@ -25,15 +25,15 @@ main() {
   fi
 
   info "mem"
-  "$BENCH_BIN" -db mem "$@"
+  "$BENCH_BIN" -db mem -benchmarks=fillrandom,readrandom "$@"
 
   echo
   info "specious"
-  "$BENCH_BIN" -db specious -final-compact -delete-db -random=true "$@"
+  "$BENCH_BIN" -db specious -final-compact -delete-db "$@"
 
   echo
   info "leveldb"
-  "$BENCH_BIN" -db leveldb -final-compact -delete-db -random=true "$@"
+  "$BENCH_BIN" -db leveldb -final-compact -delete-db "$@"
 }
 
 main "$@"

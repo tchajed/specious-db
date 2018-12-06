@@ -50,25 +50,12 @@ func showNum(i int) string {
 	return fmt.Sprintf("%d", i)
 }
 
-// A Benchmark represents a benchmark loop, with access to a BenchState for stat
-// tracking.
-type Benchmark struct {
-	Name string
-	Func func(s BenchState)
-}
-
-func run(b Benchmark) {
-	s := NewBench(b.Name)
-	b.Func(s)
-	s.Report()
-}
-
+var benchmarks = flag.String("benchmarks", "fillseq,readseq,init,fillrandom,readrandom", "comma-separated list of benchmarks to run")
 var dbType = flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
 var numEntries = flag.Int("entries", 1000000, "number of entries to put in database")
 var numReads = flag.Int("reads", -1, "number of reads to perform (-1 to copy entries)")
 var finalCompact = flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 var deleteDatabase = flag.Bool("delete-db", false, "delete database directory on completion")
-var random = flag.Bool("random", false, "also run fill/read with randomly ordered keys")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 var memprofile = flag.String("memprofile", "", "write memory cpu profile to `file`")
 
@@ -99,32 +86,20 @@ func runBenchmarks(db database) {
 		defer writeMemProfile(*memprofile)
 	}
 
-	run(Benchmark{"fillseq", func(s BenchState) {
-		for i := 0; i < *numEntries; i++ {
-			k, v := s.NextKey(), s.Value()
-			db.Put(k, v)
-			s.FinishedSingleOp(8 + len(v))
-		}
-		if *finalCompact {
-			db.Compact()
-		}
-	}})
-
-	run(Benchmark{"readseq", func(s BenchState) {
-		for i := 0; i < *numReads; i++ {
-			v := db.Get(s.NextKey())
-			if v.Present {
-				s.FinishedSingleOp(8 + len(v.Value))
+	benchmarkNames := strings.Split(*benchmarks, ",")
+	for _, name := range benchmarkNames {
+		s := NewBench(name)
+		switch name {
+		case "fillseq":
+			for i := 0; i < *numEntries; i++ {
+				k, v := s.NextKey(), s.Value()
+				db.Put(k, v)
+				s.FinishedSingleOp(8 + len(v))
 			}
-		}
-	}})
-
-	if *random {
-		db.Close()
-		db = initDb(*dbType)
-		fmt.Println("=== re-init")
-
-		run(Benchmark{"fillrandom", func(s BenchState) {
+			if *finalCompact {
+				db.Compact()
+			}
+		case "fillrandom":
 			for i := 0; i < *numEntries; i++ {
 				k, v := s.RandomKey(*numEntries), s.Value()
 				db.Put(k, v)
@@ -133,10 +108,15 @@ func runBenchmarks(db database) {
 			if *finalCompact {
 				db.Compact()
 			}
-		}})
-
-		run(Benchmark{"readrandom", func(s BenchState) {
-			// read in a different random order
+		case "readseq":
+			for i := 0; i < *numReads; i++ {
+				v := db.Get(s.NextKey())
+				if v.Present {
+					s.FinishedSingleOp(8 + len(v.Value))
+				}
+			}
+		case "readrandom":
+			// read in a different random order from random writes
 			s.ReSeed(1)
 			for i := 0; i < *numReads; i++ {
 				v := db.Get(s.RandomKey(*numEntries))
@@ -144,7 +124,15 @@ func runBenchmarks(db database) {
 					s.FinishedSingleOp(8 + len(v.Value))
 				}
 			}
-		}})
+		case "init":
+			db.Close()
+			db = initDb(*dbType)
+			s.FinishedSingleOp(0)
+		default:
+			fmt.Fprintf(os.Stderr, "unknown benchmark %s\n", name)
+			os.Exit(1)
+		}
+		s.Report()
 	}
 }
 
