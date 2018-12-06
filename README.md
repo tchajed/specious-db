@@ -13,7 +13,7 @@ We are aiming for the following basic design:
 
 ## Running benchmarks
 
-Specious DB requires Go 1.9+; if you're running Ubuntu 18.04 or later, you can use `apt-get install golang-go`, otherwise you'll need a more recent version of Go.
+Specious DB supports Go 1.8+; if you're running Ubuntu 18.04, you should be able use `apt-get install golang-go` (for 16.04 you'll need a more up-to-date version of Go). Performance is likely to be better on more recent versions, so it's best to use Go 1.10 or 1.11.
 
 Once you have Go, install leveldb:
 - On Ubuntu, `apt-get install libleveldb-dev libleveldb1v5`
