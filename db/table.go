@@ -13,22 +13,19 @@ import (
 // in-memory index to find keys on disk.
 //
 // table format:
-// entries: []Entry
-// index: []indexEntry
-// index_ptr: SliceHandle
+// entries: KeyUpdate*
+// index: IndexEntry*
+// index_ptr: FixedHandle
 //
-// Entry:
-// key uint64
-// valueLen uint16
-// valueData [valueLen]byte
-//
-// SliceHandle:
-// offset uint64
-// length uint32
+// We use FixedHandle rather than Handle for the final index ptr so that it can
+// be read with a fixed-offset read.
 //
 // The entries and index are not length-prefixed, since SliceHandles delimit
 // what ranges need to be parsed.
 
+// A Table is a handle to and index over a table, the basic immutable storage
+// unit of the database (the equivalent of an SSTable in LevelDB, which is the
+// SSTable of Bigtable).
 type Table struct {
 	ident uint32
 	f     fs.ReadFile
@@ -39,17 +36,24 @@ func identToName(ident uint32) string {
 	return fmt.Sprintf("table-%06d.ldb", ident)
 }
 
+// Name returns the filename used to store this table.
 func (t Table) Name() string {
 	return identToName(t.ident)
 }
 
 const indexPtrOffset = 8 + 4
 
+// A SliceHandle represents a slice into a file.
+//
+// This is what LevelDB calls a BlockHandle, but we don't have the same general
+// notion of a variable-sized block.
 type SliceHandle struct {
 	Offset uint64
 	Length uint32
 }
 
+// IsValid reports whether a SliceHandle is valid, which requires that it
+// addresses a non-empty range.
 func (h SliceHandle) IsValid() bool {
 	return h.Length != 0
 }
@@ -145,9 +149,8 @@ func (t Table) Get(k Key) MaybeMaybeValue {
 		if e.Key == k {
 			if e.IsPut() {
 				return MaybeMaybeValue{true, MaybeValue{Present: true, Value: e.Value}}
-			} else {
-				return MaybeMaybeValue{true, MaybeValue{Present: false}}
 			}
+			return MaybeMaybeValue{true, MaybeValue{Present: false}}
 		}
 	}
 	// key turned out to be missing

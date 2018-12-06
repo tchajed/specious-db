@@ -69,6 +69,13 @@ func TestUints(t *testing.T) {
 			assert.Equal(v, r.Uint16(), "uint16 should roundtrip")
 		})
 	}
+	for _, v := range []uint8{0, 3, 0xa0, 0xff} {
+		testRoundtrip(t, func(e *Encoder) {
+			e.Uint8(v)
+		}, func(r *Decoder) {
+			assert.Equal(v, r.Uint8(), "uint8 should roundtrip")
+		})
+	}
 }
 
 func TestArray16(t *testing.T) {
@@ -81,6 +88,21 @@ func TestArray16(t *testing.T) {
 			e.Array16(v)
 		}, func(r *Decoder) {
 			assert.Equal(v, r.Array16(), "array %d should roundtrip", i)
+		})
+	}
+}
+
+func TestArray(t *testing.T) {
+	assert := assert.New(t)
+	bigArray := make([]byte, 1<<17)
+	bigArray[2] = 16
+	bigArray[1023] = 12
+	bigArray[1<<16] = 3
+	for i, v := range [][]byte{{1, 2, 3}, {}, bigArray} {
+		testRoundtrip(t, func(e *Encoder) {
+			e.Array(v)
+		}, func(r *Decoder) {
+			assert.Equal(v, r.Array(), "array %d should roundtrip", i)
 		})
 	}
 }

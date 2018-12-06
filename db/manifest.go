@@ -18,6 +18,11 @@ import (
 	"github.com/tchajed/specious-db/fs"
 )
 
+// A Manifest is a handle to a set of Tables, along with a separate on-disk data
+// structure to track which tables are part of the database. It manages the
+// underlying tables, recovering and writing to them as necessary, and exports
+// an interface to create tables and install them into the manifest in a
+// crash-safe manner.
 type Manifest struct {
 	fs     fs.Filesys
 	tables []Table

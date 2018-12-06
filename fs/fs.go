@@ -5,11 +5,13 @@ import (
 	"io"
 )
 
+// File is a writeable file.
 type File interface {
 	io.WriteCloser
 	Sync()
 }
 
+// ReadFile is a read-only file.
 type ReadFile interface {
 	Size() int
 	ReadAt(offset int, length int) []byte
@@ -40,12 +42,14 @@ type Filesys interface {
 	AtomicCreateWith(fname string, data []byte)
 }
 
+// DeleteAll deletes all files within a Filesys (which is a single directory).
 func DeleteAll(fs Filesys) {
 	for _, f := range fs.List() {
 		fs.Delete(f)
 	}
 }
 
+// Debug prints out all the files in a Filesys, along with their sizes.
 func Debug(fs Filesys) {
 	for _, fname := range fs.List() {
 		f := fs.Open(fname)
