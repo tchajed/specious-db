@@ -19,6 +19,15 @@ func SomeValue(v Value) MaybeValue {
 	return MaybeValue{Present: true, Value: v}
 }
 
+type KeyUpdate struct {
+	Key
+	MaybeValue
+}
+
+func (u KeyUpdate) IsPut() bool {
+	return u.MaybeValue.Present
+}
+
 type Store interface {
 	Get(k Key) MaybeValue
 	Put(k Key, v Value)
@@ -34,4 +43,9 @@ type KeyRange struct {
 
 func (r KeyRange) Contains(k Key) bool {
 	return r.Min <= k && k <= r.Max
+}
+
+type UpdateIterator interface {
+	HasNext() bool
+	Next() KeyUpdate
 }

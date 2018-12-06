@@ -136,14 +136,18 @@ type MaybeMaybeValue struct {
 	MaybeValue
 }
 
+func (t Table) readIndexEntry(h SliceHandle) Decoder {
+	data := t.f.ReadAt(int(h.Offset), int(h.Length))
+	return newDecoder(data)
+}
+
 func (t Table) Get(k Key) MaybeMaybeValue {
 	h := t.index.Get(k)
 	// if handle is not found in index, then key is not present in table
 	if !h.IsValid() {
 		return MaybeMaybeValue{Valid: false}
 	}
-	data := t.f.ReadAt(int(h.Offset), int(h.Length))
-	r := newDecoder(data)
+	r := t.readIndexEntry(h)
 	for r.RemainingBytes() > 0 {
 		e := r.KeyUpdate()
 		if e.Key == k {
@@ -155,6 +159,51 @@ func (t Table) Get(k Key) MaybeMaybeValue {
 	}
 	// key turned out to be missing
 	return MaybeMaybeValue{Valid: false}
+}
+
+type tableIterator struct {
+	t       Table
+	updates []KeyUpdate
+	// index of next entry to read for more updates
+	nextEntry int
+}
+
+func newIterator(t Table) *tableIterator {
+	return &tableIterator{t: t, updates: nil, nextEntry: 0}
+}
+
+// fill re-fills the upcoming updates, if possible.
+//
+// Requires that i.updates is empty (that is, there actually are no buffered
+// updates).
+func (i *tableIterator) fill() {
+	if i.nextEntry < len(i.t.index.entries) {
+		r := i.t.readIndexEntry(i.t.index.entries[i.nextEntry].Handle)
+		i.nextEntry++
+		i.updates = i.updates[:0]
+		for r.RemainingBytes() > 0 {
+			i.updates = append(i.updates, r.KeyUpdate())
+		}
+	}
+	// could not fill, actually out of updates
+}
+
+func (i *tableIterator) HasNext() bool {
+	if len(i.updates) > 0 {
+		return true
+	}
+	i.fill()
+	return len(i.updates) > 0
+}
+
+func (i *tableIterator) Next() KeyUpdate {
+	// HasNext has returned true, so there are filled and buffered updates.
+	u := i.updates[0]
+	return u
+}
+
+func (t Table) Updates() UpdateIterator {
+	return newIterator(t)
 }
 
 func (t Table) Keys() KeyRange {

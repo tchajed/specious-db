@@ -57,7 +57,9 @@ func (m Manifest) cleanup() {
 }
 
 func (m Manifest) Get(k Key) MaybeValue {
-	// NOTE: need to traverse in reverse _chronological_ order so later updates overwrite earlier ones
+	// NOTE: need to traverse in reverse _chronological_ order so later updates
+	// overwrite earlier ones
+	//
 	// TODO: add a search index over table ranges to efficiently find table
 	for i := len(m.tables) - 1; i >= 0; i-- {
 		if !m.tables[i].Keys().Contains(k) {

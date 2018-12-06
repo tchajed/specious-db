@@ -56,15 +56,6 @@ func (t entrySearchTree) Delete(k Key) {
 	t.cache[k] = NoValue
 }
 
-type KeyUpdate struct {
-	Key
-	MaybeValue
-}
-
-func (u KeyUpdate) IsPut() bool {
-	return u.MaybeValue.Present
-}
-
 func sortUpdates(es []KeyUpdate) {
 	sort.Slice(es, func(i, j int) bool { return es[i].Key < es[j].Key })
 }
