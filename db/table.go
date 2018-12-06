@@ -174,7 +174,7 @@ func (f bufFile) Close() {
 }
 
 func newBufferedFile(f fs.File, size int) bufFile {
-	buf := bufio.NewWriterSize(f, 4*1024)
+	buf := bufio.NewWriterSize(f, size)
 	return bufFile{f, buf}
 }
 
