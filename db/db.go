@@ -44,7 +44,7 @@ func Open(fs fs.Filesys) *Database {
 	if len(updates) > 0 {
 		// save these to a table; this should be crash-safe because a
 		// partially-written table will be deleted by DeleteObsoleteFiles()
-		t := mf.CreateTable()
+		t := mf.CreateTable(nil, nil)
 		for _, e := range updates {
 			t.Put(e)
 		}
@@ -65,7 +65,7 @@ func (db *Database) compactLog() {
 	if len(updates) == 0 {
 		return
 	}
-	t := db.mf.CreateTable()
+	t := db.mf.CreateTable(nil, nil)
 	for _, e := range updates {
 		t.Put(e)
 	}

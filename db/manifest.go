@@ -121,16 +121,24 @@ func recoverManifest(fs fs.Filesys) Manifest {
 type tableCreator struct {
 	// think of the tableCreator as being a set of methods on a manifest, keyed
 	// by a (new, uninstalled) table ident
-	m     *Manifest
-	ident uint32
-	w     *tableWriter
+	m              *Manifest
+	ident          uint32
+	w              *tableWriter
+	tablesSubsumed map[uint32]bool
 }
 
-func (m *Manifest) CreateTable() tableCreator {
+func (m *Manifest) CreateTable(youngTables []uint32, level1tables []uint32) tableCreator {
 	id := m.nextIdent
 	m.nextIdent++
 	f := m.fs.Create(identToName(id))
-	return tableCreator{m, id, newTableWriter(f)}
+	tablesSubsumed := make(map[uint32]bool, len(youngTables)+len(level1tables))
+	for _, ident := range youngTables {
+		tablesSubsumed[ident] = true
+	}
+	for _, ident := range level1tables {
+		tablesSubsumed[ident] = true
+	}
+	return tableCreator{m, id, newTableWriter(f), tablesSubsumed}
 }
 
 func (c tableCreator) Put(e KeyUpdate) {
@@ -140,8 +148,16 @@ func (c tableCreator) Put(e KeyUpdate) {
 func (c tableCreator) CloseAndInstall(level int) {
 	entries := c.w.Close()
 	f := c.m.fs.Open(identToName(c.ident))
-	t := NewTable(c.ident, f, entries)
-	c.m.tables[level] = append(c.m.tables[level], t)
+	newTable := NewTable(c.ident, f, entries)
+	levels := make([][]Table, 2)
+	for level, tables := range c.m.tables {
+		for _, t := range tables {
+			if !c.tablesSubsumed[t.ident] {
+				levels[level] = append(levels[level], t)
+			}
+		}
+	}
+	c.m.tables[level] = append(c.m.tables[level], newTable)
 	c.m.save()
 }
 
