@@ -42,12 +42,23 @@ func (w *Encoder) KeyUpdate(e KeyUpdate) {
 }
 
 func (r Decoder) Handle() SliceHandle {
+	offset := r.VarInt()
+	length := r.VarInt()
+	return SliceHandle{offset, uint32(length)}
+}
+
+func (w *Encoder) Handle(h SliceHandle) {
+	w.VarInt(h.Offset)
+	w.VarInt(uint64(h.Length))
+}
+
+func (r Decoder) FixedHandle() SliceHandle {
 	offset := r.Uint64()
 	length := r.Uint32()
 	return SliceHandle{offset, length}
 }
 
-func (w *Encoder) Handle(h SliceHandle) {
+func (w *Encoder) FixedHandle(h SliceHandle) {
 	w.Uint64(h.Offset)
 	w.Uint32(h.Length)
 }

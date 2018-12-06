@@ -2,7 +2,6 @@ package db
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 
 	"github.com/tchajed/specious-db/fs"
@@ -107,9 +106,8 @@ func (i tableIndex) Keys() KeyRange {
 
 func readIndexData(f fs.ReadFile) []byte {
 	indexPtrData := f.ReadAt(f.Size()-indexPtrOffset, indexPtrOffset)
-	offset := binary.LittleEndian.Uint64(indexPtrData[0:8])
-	length := binary.LittleEndian.Uint32(indexPtrData[8 : 8+4])
-	data := f.ReadAt(int(offset), int(length))
+	h := newDecoder(indexPtrData).FixedHandle()
+	data := f.ReadAt(int(h.Offset), int(h.Length))
 	return data
 }
 
@@ -245,7 +243,7 @@ func (w tableWriter) Close() []indexEntry {
 		w.w.IndexEntry(e)
 	}
 	indexHandle := SliceHandle{indexStart, uint32(w.offset() - indexStart)}
-	w.w.Handle(indexHandle)
+	w.w.FixedHandle(indexHandle)
 	w.f.Close()
 	return w.entries
 }
