@@ -27,7 +27,7 @@ func (f readFile) ReadAt(offset int, length int) []byte {
 	p := make([]byte, length)
 	n, err := f.File.ReadAt(p, int64(offset))
 	if n != len(p) {
-		panic(fmt.Errorf("short ReadAt of %d bytes for %s", n, f.File.Name()))
+		panic(fmt.Errorf("short ReadAt(%d, %d) -> %d bytes for %s", offset, length, n, f.File.Name()))
 	}
 	if err != nil {
 		panic(err)

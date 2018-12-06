@@ -20,6 +20,13 @@ func (r *Decoder) VarInt() uint64 {
 	return n
 }
 
+// Array decodes an array prefixed with a varint length.
+func (r *Decoder) Array() []byte {
+	length := r.VarInt()
+	data := r.Bytes(int(length))
+	return data
+}
+
 // VarInt encodes a 64-bit int as a varint
 func (r *Encoder) VarInt(u uint64) {
 	bytes := make([]byte, 0, 1)
@@ -35,4 +42,10 @@ func (r *Encoder) VarInt(u uint64) {
 			return
 		}
 	}
+}
+
+// Array encodes an array prefixed with a varint length.
+func (r *Encoder) Array(data []byte) {
+	r.VarInt(uint64(len(data)))
+	r.Bytes(data)
 }
