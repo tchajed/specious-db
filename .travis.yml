@@ -9,8 +9,8 @@ go:
 
 script:
   - go test -v ./...
-  - go build -v
-  - ./bench.sh ./specious-db -entries 10000
+  - go build ./cmd/specious-bench
+  - ./bench.sh ./specious-bench -entries 10000
 
 addons:
   apt:
