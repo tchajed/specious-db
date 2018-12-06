@@ -97,3 +97,21 @@ func TestMultipleThings(t *testing.T) {
 		assert.Equal([]byte{1, 2, 3}, r.Bytes(3))
 	})
 }
+
+func TestVarInt(t *testing.T) {
+	assert := assert.New(t)
+	tests := []uint64{0, 0x32, 300, 0xff34, 0x20DF135CE9DBF162, 0xCE9DBF62}
+	for i := uint(0); i < 64; i++ {
+		for j := uint(0); j < 64; j++ {
+			tests = append(tests, 1<<i|1<<j)
+		}
+	}
+	for _, n := range tests {
+		testRoundtrip(t, func(e *Encoder) {
+			e.VarInt(n)
+		}, func(r *Decoder) {
+			b := r.buf
+			assert.Equal(n, r.VarInt(), "%v", b)
+		})
+	}
+}
