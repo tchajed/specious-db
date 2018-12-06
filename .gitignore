@@ -14,7 +14,7 @@
 # database directory created by benchmarking tool
 benchmark.db/
 # compiled binary
-/specious-db
+/specious-bench
 
 # CPU/memory profiles
 *.prof

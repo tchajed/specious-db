@@ -19,9 +19,13 @@ Once you have Go, install leveldb:
 - On Ubuntu, `apt-get install libleveldb-dev libleveldb1v5`
 - On Arch Linux, `pacman -S leveldb`
 
-Next, install into your $GOPATH with `go get -u github.com/tchajed/specious-db`.
+To run the benchmarks by installing the benchmark runner, install `specious-bench` with `go get -u github.com/tchajed/specious-db/cmd/specious-bench`.
+Run the benchmarks with `$GOPATH/src/github.com/tchajed/specious-db/bench.sh $GOPATH/bin/specious-bench`.
 
-Run the benchmarks with `$GOPATH/src/github.com/tchajed/specious-db/bench.sh $GOPATH/bin/specious-db`. From a clone of the repo you can more simply run `go build` followed by `./bench.sh ./specious-db`.
+To instead run from the repo:
+- fetch the dependencies with `go get ./...`
+- compile the benchmarking executable `go build ./cmd/specious-bench`
+- run a set of benchmarks with `./bench.sh ./specious-bench`
 
 ## Some benchmark numbers
 
