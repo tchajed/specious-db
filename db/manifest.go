@@ -6,8 +6,14 @@ package db
 // cache to lookup keys by first finding the right tables to search.
 //
 // on-disk representation:
-// numTables uint32
-// idents [numTables]uint32
+//   numTables uint32
+//   tables [numTables]tableInfo
+//
+// tableInfo:
+//   level uint8
+//   ident uint32
+//
+// We only support two levels, so the level is always either 0 or 1.
 
 import (
 	"bytes"
@@ -24,8 +30,9 @@ import (
 // an interface to create tables and install them into the manifest in a
 // crash-safe manner.
 type Manifest struct {
-	fs     fs.Filesys
-	tables []Table
+	fs        fs.Filesys
+	tables    [][]Table
+	nextIdent uint32
 }
 
 func initManifest(fs fs.Filesys) Manifest {
@@ -33,13 +40,15 @@ func initManifest(fs fs.Filesys) Manifest {
 	defer f.Close()
 	e := newEncoder(f)
 	e.Uint32(0)
-	return Manifest{fs, nil}
+	return Manifest{fs, make([][]Table, 2), 1}
 }
 
 func (m Manifest) isKnownTable(name string) bool {
-	for _, t := range m.tables {
-		if name == t.Name() {
-			return true
+	for _, tables := range m.tables {
+		for _, t := range tables {
+			if name == t.Name() {
+				return true
+			}
 		}
 	}
 	return false
@@ -61,19 +70,21 @@ func (m Manifest) Get(k Key) MaybeValue {
 	// overwrite earlier ones
 	//
 	// TODO: add a search index over table ranges to efficiently find table
-	for i := len(m.tables) - 1; i >= 0; i-- {
-		if !m.tables[i].Keys().Contains(k) {
-			continue
-		}
-		mu := m.tables[i].Get(k)
-		if mu.Valid {
-			return mu.MaybeValue
+	for _, tables := range m.tables {
+		for i := len(tables) - 1; i >= 0; i-- {
+			if !tables[i].Keys().Contains(k) {
+				continue
+			}
+			mu := tables[i].Get(k)
+			if mu.Valid {
+				return mu.MaybeValue
+			}
 		}
 	}
 	return NoValue
 }
 
-func newManifest(fs fs.Filesys) Manifest {
+func recoverManifest(fs fs.Filesys) Manifest {
 	f := fs.Open("manifest")
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -81,20 +92,28 @@ func newManifest(fs fs.Filesys) Manifest {
 	}
 	f.Close()
 	dec := newDecoder(data)
-	numIdents := dec.Uint32()
-	idents := make([]uint32, 0, numIdents)
-	for i := 0; i < int(numIdents); i++ {
-		idents = append(idents, dec.Uint32())
+	numTables := dec.Uint32()
+	tables := make([][]Table, 2)
+	maxIdent := uint32(1)
+	for i := 0; i < int(numTables); i++ {
+		if dec.RemainingBytes() == 0 {
+			panic(fmt.Errorf("manifest with %d entries is cut off", numTables))
+		}
+		level := dec.Uint8()
+		if int(level) >= len(tables) {
+			panic(fmt.Errorf("invalid level %d", level))
+		}
+		ident := dec.Uint32()
+		if ident > maxIdent {
+			maxIdent = ident
+		}
+		tables[level] = append(tables[level], OpenTable(ident, fs))
 	}
 	if dec.RemainingBytes() > 0 {
 		panic(fmt.Errorf("manifest has %d leftover bytes", dec.RemainingBytes()))
 	}
 
-	tables := make([]Table, 0, len(idents))
-	for _, i := range idents {
-		tables = append(tables, OpenTable(i, fs))
-	}
-	m := Manifest{fs, tables}
+	m := Manifest{fs, tables, maxIdent + 1}
 	m.cleanup()
 	return m
 }
@@ -107,40 +126,43 @@ type tableCreator struct {
 	w     *tableWriter
 }
 
+func (m *Manifest) CreateTable() tableCreator {
+	id := m.nextIdent
+	m.nextIdent++
+	f := m.fs.Create(identToName(id))
+	return tableCreator{m, id, newTableWriter(f)}
+}
+
 func (c tableCreator) Put(e KeyUpdate) {
 	c.w.Put(e)
 }
 
-func (c tableCreator) CloseAndInstall() {
+func (c tableCreator) CloseAndInstall(level int) {
 	entries := c.w.Close()
 	f := c.m.fs.Open(identToName(c.ident))
 	t := NewTable(c.ident, f, entries)
-	c.m.installTable(t)
+	c.m.tables[level] = append(c.m.tables[level], t)
+	c.m.save()
 }
 
-func (m *Manifest) installTable(t Table) {
-	// NOTE: we use the file system's atomic rename to create the manifest,
-	// but could attempt to use the logging implementation
+// Save writes out a representation of the manifest to disk (atomically).
+func (m *Manifest) save() {
 	var buf bytes.Buffer
 	enc := newEncoder(&buf)
-	enc.Uint32(uint32(len(m.tables)) + 1)
-	for _, t0 := range m.tables {
-		enc.Uint32(t0.ident)
+	numTables := 0
+	for _, tables := range m.tables {
+		numTables += len(tables)
 	}
-	enc.Uint32(t.ident)
+	enc.Uint32(uint32(numTables))
+	for level, tables := range m.tables {
+		for _, t := range tables {
+			enc.Uint8(uint8(level))
+			enc.Uint32(t.ident)
+		}
+	}
+	// NOTE: we use the file system's atomic rename to create the manifest, but
+	// could attempt to use the logging implementation
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
-	m.tables = append(m.tables, t)
-}
-
-func (m *Manifest) CreateTable() tableCreator {
-	// NOTE: need to guarantee that table IDs increase and we know about all the
-	// tables for this name to be fresh
-	id := uint32(1)
-	if len(m.tables) > 0 {
-		id = m.tables[len(m.tables)-1].ident + 1
-	}
-	f := m.fs.Create(identToName(id))
-	return tableCreator{m, id, newTableWriter(f)}
 }
 
 // TODO: implement compaction from L0 to L1

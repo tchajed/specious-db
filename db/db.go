@@ -39,7 +39,7 @@ func Init(filesys fs.Filesys) *Database {
 }
 
 func Open(fs fs.Filesys) *Database {
-	mf := newManifest(fs)
+	mf := recoverManifest(fs)
 	updates := recoverUpdates(fs)
 	if len(updates) > 0 {
 		// save these to a table; this should be crash-safe because a
@@ -48,7 +48,7 @@ func Open(fs fs.Filesys) *Database {
 		for _, e := range updates {
 			t.Put(e)
 		}
-		t.CloseAndInstall()
+		t.CloseAndInstall(0)
 		// if we crash here, the log will be converted to a duplicate table
 		//
 		// NOTE: these tables will only be merged by another compaction (once
@@ -69,7 +69,7 @@ func (db *Database) compactLog() {
 	for _, e := range updates {
 		t.Put(e)
 	}
-	t.CloseAndInstall()
+	t.CloseAndInstall(0)
 	db.fs.Truncate("log")
 	db.log = initLog(db.fs)
 }
