@@ -13,10 +13,12 @@ We are aiming for the following basic design:
 
 ## Running benchmarks
 
-First install leveldb:
+Specious DB requires Go 1.9+; if you're running Ubuntu 18.04 or later, you can use `apt-get install golang-go`, otherwise you'll need a more recent version of Go.
+
+Once you have Go, install leveldb:
 - On Ubuntu, `apt-get install libleveldb-dev libleveldb1v5`
 - On Arch Linux, `pacman -S leveldb`
 
-Next, install with `go get -u github.com/tchajed/specious-db`.
+Next, install into your $GOPATH with `go get -u github.com/tchajed/specious-db`.
 
 Run the benchmarks with `$GOPATH/src/github.com/tchajed/specious-db/bench.sh $GOPATH/bin/specious-db`. From a clone of the repo you can more simply run `go build` followed by `./bench.sh ./specious-db`.
