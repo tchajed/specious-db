@@ -65,14 +65,8 @@ func (u KeyUpdate) IsPut() bool {
 	return u.MaybeValue.Present
 }
 
-type updateSorter []KeyUpdate
-
-func (es updateSorter) Len() int           { return len(es) }
-func (es updateSorter) Swap(i, j int)      { es[i], es[j] = es[j], es[i] }
-func (es updateSorter) Less(i, j int) bool { return es[i].Key < es[j].Key }
-
 func sortUpdates(es []KeyUpdate) {
-	sort.Sort(updateSorter(es))
+	sort.Slice(es, func(i, j int) bool { return es[i].Key < es[j].Key })
 }
 
 func (t entrySearchTree) Updates() []KeyUpdate {
