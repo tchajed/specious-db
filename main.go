@@ -138,7 +138,7 @@ func runBenchmarks(db database) {
 		run(Benchmark{"readrandom", func(s BenchState) {
 			// read in a different random order
 			s.ReSeed(1)
-			for i := 0; i < *numEntries; i++ {
+			for i := 0; i < *numReads; i++ {
 				v := db.Get(s.RandomKey(*numEntries))
 				if v.Present {
 					s.FinishedSingleOp(8 + len(v.Value))
