@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/tchajed/specious-db/db"
 )
 
 type generator struct {
@@ -20,15 +22,15 @@ func (g generator) ReSeed(i int64) {
 	g.Rand.Seed(i)
 }
 
-func (g *generator) NextKey() uint64 {
+func (g *generator) NextKey() db.Key {
 	k := g.key
 	g.key++
-	return k
+	return db.Key(k)
 }
 
-func (g generator) RandomKey(max int) uint64 {
+func (g generator) RandomKey(max int) db.Key {
 	n := g.Rand.Int63n(int64(max))
-	return uint64(n)
+	return db.Key(uint64(n))
 }
 
 func (g generator) Value() []byte {

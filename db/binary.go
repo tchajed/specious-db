@@ -22,8 +22,16 @@ func newEncoder(w io.Writer) Encoder {
 	return Encoder{bin.NewEncoder(w)}
 }
 
+func (r Decoder) Key() Key {
+	return Key(r.VarInt())
+}
+
+func (w *Encoder) Key(k Key) {
+	w.VarInt(uint64(k))
+}
+
 func (r Decoder) KeyUpdate() KeyUpdate {
-	key := r.VarInt()
+	key := r.Key()
 	length := r.Uint16()
 	if length == 0xffff {
 		return KeyUpdate{key, NoValue}
@@ -33,7 +41,7 @@ func (r Decoder) KeyUpdate() KeyUpdate {
 }
 
 func (w *Encoder) KeyUpdate(e KeyUpdate) {
-	w.VarInt(e.Key)
+	w.Key(e.Key)
 	if e.IsPut() {
 		w.Array16(e.Value)
 	} else {
@@ -64,14 +72,14 @@ func (w *Encoder) FixedHandle(h SliceHandle) {
 }
 
 func (r *Decoder) KeyRange() KeyRange {
-	min := r.VarInt()
-	max := r.VarInt()
+	min := r.Key()
+	max := r.Key()
 	return KeyRange{min, max}
 }
 
 func (w *Encoder) KeyRange(keys KeyRange) {
-	w.VarInt(keys.Min)
-	w.VarInt(keys.Max)
+	w.Key(keys.Min)
+	w.Key(keys.Max)
 }
 
 func (r *Decoder) IndexEntry() indexEntry {

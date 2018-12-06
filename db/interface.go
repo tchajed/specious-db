@@ -1,7 +1,7 @@
 package db
 
-type Key = uint64
-type Value = []byte
+type Key uint64
+type Value []byte
 
 type Entry struct {
 	Key
@@ -28,8 +28,8 @@ type Store interface {
 }
 
 type KeyRange struct {
-	Min uint64
-	Max uint64
+	Min Key
+	Max Key
 }
 
 func (r KeyRange) Contains(k Key) bool {

@@ -52,7 +52,7 @@ func New(path string) *Database {
 // fromDbKey converts a db.Key (a uint64) to a byte slice for usage with leveldb
 func (d Database) fromDbKey(k db.Key) []byte {
 	keyScratch := d.keyDataPool.Get().([]byte)
-	binary.LittleEndian.PutUint64(keyScratch, k)
+	binary.LittleEndian.PutUint64(keyScratch, uint64(k))
 	return keyScratch
 }
 
