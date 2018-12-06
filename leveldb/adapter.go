@@ -28,7 +28,6 @@ func levelDbOpts() *levigo.Options {
 	opts.SetCompression(levigo.NoCompression)
 
 	// performance-related configuration
-	// NOTE: leveldb may truncate the cache size to something higher
 	cache := levigo.NewLRUCache(0)
 	opts.SetCache(cache)
 	// 4MB is the default
