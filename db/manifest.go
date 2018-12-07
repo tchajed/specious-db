@@ -160,6 +160,9 @@ func (c tableCreator) CloseAndInstall(level int) {
 	levels[level] = append(levels[level], newTable)
 	c.m.tables = levels
 	c.m.save()
+	for ident := range c.tablesSubsumed {
+		c.m.fs.Delete(identToName(ident))
+	}
 }
 
 // Save writes out a representation of the manifest to disk (atomically).
