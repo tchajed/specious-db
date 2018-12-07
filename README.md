@@ -11,6 +11,8 @@ We are aiming for the following basic design:
 - recovery
 - background compaction
 
+See [design.md](design.md) for a more detailed overview of how the system works.
+
 ## Running benchmarks
 
 Specious DB supports Go 1.8+; if you're running Ubuntu 18.04, you should be able use `apt-get install golang-go` (for 16.04 you'll need a more up-to-date version of Go). Performance is likely to be better on more recent versions, so it's best to use Go 1.10 or 1.11.
