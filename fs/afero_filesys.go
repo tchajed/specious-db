@@ -157,7 +157,7 @@ func deleteTmpFiles(fs afero.Fs) {
 // Deletes all files named *.tmp, as a file-system recovery for AtomicCreateWith.
 func FromAfero(fs afero.Fs) Filesys {
 	deleteTmpFiles(fs)
-	return aferoFs{afero.Afero{fs}, new(Stats)}
+	return aferoFs{fs: afero.Afero{Fs: fs}, Stats: new(Stats)}
 }
 
 // MemFs creates an in-memory Filesys
