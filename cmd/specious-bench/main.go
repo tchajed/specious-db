@@ -208,11 +208,15 @@ func main() {
 	}
 
 	totalBytes := float64(*numEntries * (8 + 100))
+	reportedDatabase := *dbType
+	if *fsType != "dir" {
+		reportedDatabase += fmt.Sprintf(" (%s)", *fsType)
+	}
 	for _, info := range []struct {
 		Key   string
 		Value string
 	}{
-		{"database", *dbType},
+		{"database", reportedDatabase},
 		{"entries", showNum(*numEntries)},
 		{"final compaction?", fmt.Sprintf("%v", *finalCompact)},
 		{"total data (MB)", fmt.Sprintf("%.1f", totalBytes/(1024*1024))},
