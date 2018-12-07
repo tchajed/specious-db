@@ -177,10 +177,12 @@ func newIterator(t Table) *tableIterator {
 // Requires that i.updates is empty (that is, there actually are no buffered
 // updates).
 func (i *tableIterator) fill() {
+	if len(i.updates) != 0 {
+		panic("fill should only be called when no updates are buffered")
+	}
 	if i.nextEntry < len(i.t.index.entries) {
 		r := i.t.readIndexEntry(i.t.index.entries[i.nextEntry].Handle)
 		i.nextEntry++
-		i.updates = i.updates[:0]
 		for r.RemainingBytes() > 0 {
 			i.updates = append(i.updates, r.KeyUpdate())
 		}
@@ -199,6 +201,7 @@ func (i *tableIterator) HasNext() bool {
 func (i *tableIterator) Next() KeyUpdate {
 	// HasNext has returned true, so there are filled and buffered updates.
 	u := i.updates[0]
+	i.updates = i.updates[1:]
 	return u
 }
 

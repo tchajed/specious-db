@@ -73,7 +73,7 @@ func (suite *TableSuite) TestTableDelete() {
 	suite.Equal(unknownval(), suite.Get(7))
 }
 
-func (suite *TableSuite) Updates() {
+func (suite *TableSuite) TestUpdates() {
 	updates := []KeyUpdate{
 		putU(1, "val 1"),
 		putU(2, "val 2"),
@@ -88,8 +88,12 @@ func (suite *TableSuite) Updates() {
 	suite.w.Put(updates[3])
 	suite.DoneWriting()
 	entries := make([]KeyUpdate, 0)
-	it := suite.Table.Updates()
-	for it.HasNext() {
+	it := suite.Updates()
+	for i := 0; it.HasNext(); i++ {
+		if i > len(updates) {
+			suite.Fail("iterator has too many items")
+			break
+		}
 		entries = append(entries, it.Next())
 	}
 	suite.Equal(updates, entries)
