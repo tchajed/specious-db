@@ -18,6 +18,13 @@ type ReadFile interface {
 	io.ReadCloser
 }
 
+type Stats struct {
+	ReadOps    int
+	ReadBytes  int
+	WriteOps   int
+	WriteBytes int
+}
+
 // Filesys is a database-specific API for accessing the file system.
 //
 // Note that an instance of this interface only exposes a single directory
@@ -40,6 +47,9 @@ type Filesys interface {
 	Delete(fname string)
 	Truncate(fname string)
 	AtomicCreateWith(fname string, data []byte)
+
+	// performance counters
+	GetStats() Stats
 }
 
 // DeleteAll deletes all files within a Filesys (which is a single directory).

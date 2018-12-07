@@ -108,5 +108,5 @@ func NewBench(name string) BenchState {
 // Report finishes the benchmark and prints final statistics.
 func (s BenchState) Report() {
 	s.stats.done()
-	fmt.Printf("%-15s : %s\n", s.name, s.stats.formatStats())
+	fmt.Printf("%-20s : %s\n", s.name, s.stats.formatStats())
 }

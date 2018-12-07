@@ -7,12 +7,24 @@ import (
 	"github.com/spf13/afero"
 )
 
+func (s *Stats) readOp(bytes int) {
+	s.ReadOps++
+	s.ReadBytes += bytes
+}
+
+func (s *Stats) writeOp(bytes int) {
+	s.WriteOps++
+	s.WriteBytes += bytes
+}
+
 type aferoFs struct {
 	fs afero.Afero
+	*Stats
 }
 
 type readFile struct {
 	afero.File
+	*Stats
 }
 
 func (f readFile) Size() int {
@@ -23,7 +35,13 @@ func (f readFile) Size() int {
 	return int(st.Size())
 }
 
+func (f readFile) Read(buf []byte) (int, error) {
+	defer f.readOp(len(buf))
+	return f.File.Read(buf)
+}
+
 func (f readFile) ReadAt(offset int, length int) []byte {
+	defer f.readOp(length)
 	p := make([]byte, length)
 	n, err := f.File.ReadAt(p, int64(offset))
 	if n != len(p) {
@@ -44,11 +62,12 @@ func (fs aferoFs) Open(fname string) ReadFile {
 	if err != nil {
 		panic(err)
 	}
-	return readFile{f}
+	return readFile{f, fs.Stats}
 }
 
 type writeFile struct {
 	afero.File
+	*Stats
 }
 
 func (f writeFile) Sync() {
@@ -58,12 +77,17 @@ func (f writeFile) Sync() {
 	}
 }
 
+func (f writeFile) Write(p []byte) (n int, err error) {
+	defer f.writeOp(len(p))
+	return f.File.Write(p)
+}
+
 func (fs aferoFs) Create(fname string) File {
 	f, err := fs.fs.Create(abs(fname))
 	if err != nil {
 		panic(err)
 	}
-	return writeFile{f}
+	return writeFile{f, fs.Stats}
 }
 
 func (fs aferoFs) List() []string {
@@ -107,6 +131,10 @@ func (fs aferoFs) AtomicCreateWith(fname string, data []byte) {
 	}
 }
 
+func (fs aferoFs) GetStats() Stats {
+	return *fs.Stats
+}
+
 func deleteTmpFiles(fs afero.Fs) {
 	tmpFiles, err := afero.Glob(fs, abs("*.tmp"))
 	if err != nil {
@@ -129,7 +157,7 @@ func deleteTmpFiles(fs afero.Fs) {
 // Deletes all files named *.tmp, as a file-system recovery for AtomicCreateWith.
 func FromAfero(fs afero.Fs) Filesys {
 	deleteTmpFiles(fs)
-	return aferoFs{afero.Afero{fs}}
+	return aferoFs{afero.Afero{fs}, new(Stats)}
 }
 
 // MemFs creates an in-memory Filesys

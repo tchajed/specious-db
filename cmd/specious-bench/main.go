@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/tchajed/specious-db/db"
 	"github.com/tchajed/specious-db/db/memdb"
@@ -23,22 +24,32 @@ type database interface {
 	Compact()
 }
 
-func initDb(dbType string) database {
-	switch dbType {
+func initFs() fs.Filesys {
+	switch *fsType {
+	case "dir":
+		filesys := fs.DirFs(dbPath)
+		fs.DeleteAll(filesys)
+		return filesys
+	case "mem":
+		return fs.MemFs()
+	}
+	return nil
+}
+
+func initDb(filesys fs.Filesys) database {
+	switch *dbType {
 	case "specious":
-		os.RemoveAll(dbPath)
-		fs := fs.DirFs(dbPath)
-		return db.Init(fs)
+		fs.DeleteAll(filesys)
+		return db.Init(filesys)
 	case "specious-mem":
-		fs := fs.MemFs()
-		return db.Init(fs)
+		return db.Init(filesys)
 	case "leveldb":
 		os.RemoveAll(dbPath)
 		return leveldb.New(dbPath)
 	case "mem":
 		return memdb.New()
 	}
-	panic(fmt.Errorf("unknown database type %s", dbType))
+	panic(fmt.Errorf("unknown database type %s", *dbType))
 }
 
 func showNum(i int) string {
@@ -52,13 +63,15 @@ func showNum(i int) string {
 }
 
 var benchmarks = flag.String("benchmarks", "fillseq,readseq,init,fillrandom,readrandom", "comma-separated list of benchmarks to run")
-var dbType = flag.String("db", "specious", "database to use (specious|specious-mem|leveldb|mem)")
+var dbType = flag.String("db", "specious", "database to use (specious|leveldb|mem)")
+var fsType = flag.String("fs", "dir", "filesystem to use for specious-db (dir|mem)")
 var numEntries = flag.Int("entries", 1000000, "number of entries to put in database")
 var numReads = flag.Int("reads", -1, "number of reads to perform (-1 to copy entries)")
 var finalCompact = flag.Bool("final-compact", false, "force a compaction at end of benchmark")
 var deleteDatabase = flag.Bool("delete-db", false, "delete database directory on completion")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 var memprofile = flag.String("memprofile", "", "write memory cpu profile to `file`")
+var printStats = flag.Bool("stats", false, "print out filesystem stats")
 
 func writeMemProfile(fname string) {
 	f, err := os.Create(fname)
@@ -108,7 +121,7 @@ func readFile(chunkSize int, s *stats, fs fs.Filesys) {
 	}
 }
 
-func runBenchmarks(db database) {
+func runBenchmarks(fs fs.Filesys, db database) {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -163,15 +176,13 @@ func runBenchmarks(db database) {
 			}
 		case "init":
 			db.Close()
-			db = initDb(*dbType)
+			db = initDb(fs)
 			s.FinishedSingleOp(0)
 		case "fs-read":
 			// does not use database
-			fs := fs.DirFs(dbPath)
 			readFile(4096, s.stats, fs)
 		case "fs-write":
 			// does not use database
-			fs := fs.DirFs(dbPath)
 			data := make([]byte, 4096)
 			s.Read(data)
 			writeFile(16*1024*1024, data, s.stats, fs)
@@ -210,9 +221,20 @@ func main() {
 	}
 	fmt.Println(strings.Repeat("-", 30))
 
-	db := initDb(*dbType)
-	runBenchmarks(db)
+	fs := initFs()
+	db := initDb(fs)
+	start := time.Now()
+	runBenchmarks(fs, db)
+	end := time.Now()
 	db.Close()
+
+	if *printStats {
+		fsstats := fs.GetStats()
+		writes := stats{fsstats.WriteOps, fsstats.WriteBytes, start, &end}
+		reads := stats{fsstats.ReadOps, fsstats.ReadBytes, start, &end}
+		fmt.Printf("%-20s : %s [%6d kops]\n", "[meta] fs-writes", writes.formatStats(), writes.Ops/1000)
+		fmt.Printf("%-20s : %s [%6d kops]\n", "[meta] fs-reads", reads.formatStats(), reads.Ops/1000)
+	}
 
 	if *deleteDatabase {
 		os.RemoveAll(dbPath)
