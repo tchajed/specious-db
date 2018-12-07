@@ -23,6 +23,9 @@ func (db *Database) Put(k Key, v Value) {
 	if db.log.SizeEstimate() >= 4*1024*1024 {
 		db.compactLog()
 	}
+	if len(db.mf.tables[0]) >= 4 {
+		db.compactYoung()
+	}
 }
 
 func (db *Database) Delete(k Key) {
@@ -74,13 +77,34 @@ func (db *Database) compactLog() {
 	db.log = initLog(db.fs)
 }
 
+func (db *Database) compactYoung() {
+	var youngTables []uint32
+	var level1Tables []uint32
+	var updateIterators []UpdateIterator
+	for _, t := range db.mf.tables[0] {
+		youngTables = append(youngTables, t.ident)
+		updateIterators = append(updateIterators, t.Updates())
+	}
+	// get overlapping tables
+	for _, t := range db.mf.tables[1] {
+		level1Tables = append(level1Tables, t.ident)
+		updateIterators = append(updateIterators, t.Updates())
+	}
+	t := db.mf.CreateTable(youngTables, level1Tables)
+	it := MergeUpdates(updateIterators)
+	for it.HasNext() {
+		t.Put(it.Next())
+	}
+	t.CloseAndInstall(1)
+}
+
 func (db *Database) DeleteObsoleteFiles() {
 	db.mf.cleanup()
 }
 
 func (db *Database) Compact() {
 	db.compactLog()
-	db.DeleteObsoleteFiles()
+	db.compactYoung()
 }
 
 func (db *Database) Close() {

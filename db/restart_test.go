@@ -8,7 +8,8 @@ import (
 
 const (
 	noRestart int = iota
-	compactButNoRestart
+	compactOnlyLog
+	compactAll
 	forceRestart
 	cleanRestart
 )
@@ -24,10 +25,16 @@ func TestNoRestartSuite(t *testing.T) {
 		restartType: noRestart})
 }
 
-func TestCompactWithoutRestartSuite(t *testing.T) {
+func TestCompactLogSuite(t *testing.T) {
 	suite.Run(t, RestartSuite{
 		DbSuite:     new(DbSuite),
-		restartType: compactButNoRestart})
+		restartType: compactOnlyLog})
+}
+
+func TestCompactAllSuite(t *testing.T) {
+	suite.Run(t, RestartSuite{
+		DbSuite:     new(DbSuite),
+		restartType: compactAll})
 }
 
 func TestRestartCleanlySuite(t *testing.T) {
@@ -50,8 +57,10 @@ func TestForceRestartSuite(t *testing.T) {
 func (suite RestartSuite) Restart() {
 	switch suite.restartType {
 	case noRestart:
-	case compactButNoRestart:
+	case compactOnlyLog:
 		suite.db.compactLog()
+	case compactAll:
+		suite.db.Compact()
 	case forceRestart:
 		suite.db.Database = Open(suite.fs)
 	case cleanRestart:

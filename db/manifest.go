@@ -157,7 +157,8 @@ func (c tableCreator) CloseAndInstall(level int) {
 			}
 		}
 	}
-	c.m.tables[level] = append(c.m.tables[level], newTable)
+	levels[level] = append(levels[level], newTable)
+	c.m.tables = levels
 	c.m.save()
 }
 
@@ -180,11 +181,6 @@ func (m *Manifest) save() {
 	// could attempt to use the logging implementation
 	m.fs.AtomicCreateWith("manifest", buf.Bytes())
 }
-
-// TODO: implement compaction from L0 to L1
-//
-// needs to treat L0 specially; must take all files from a prefix so that the
-// latest update is always reflected
 
 // TODO: implement streaming construction of multiple tables, splitting at some
 // file size
