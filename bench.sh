@@ -5,7 +5,7 @@
 set -e
 
 info() {
-  echo -e "\033[1;37m${1}\033[0m"
+  echo -e "\\033[1;37m${1}\\033[0m"
 }
 
 die() {
@@ -14,13 +14,12 @@ die() {
 }
 
 main() {
-  DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
   if [ -z "$1" ]; then
     die "Usage: bench.sh <path to specious-bench> <args for specious-bench>"
   fi
   BENCH_BIN="$1"
   shift
-  if ! [ -f "$BENCH_BIN" ] && ! which "$BENCH_BIN" &>/dev/null; then
+  if ! [ -f "$BENCH_BIN" ] && ! command -v "$BENCH_BIN" >/dev/null; then
     die "could not find executable $BENCH_BIN" 1>&2
   fi
 
