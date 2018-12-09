@@ -11,11 +11,9 @@ script:
   - go test -v ./...
   - go build ./cmd/specious-bench
   - ./bench.sh ./specious-bench -entries 10000
-  - ./loc.sh
 
 addons:
   apt:
     packages:
       - libleveldb-dev
       - libleveldb1v5
-      - cloc
