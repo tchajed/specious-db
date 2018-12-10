@@ -35,34 +35,39 @@ On my Macbook (these are lines filtered from `bench.sh`):
 
 ```
            database: mem
-fillseq         :   0.665 micros/op;  154.8 MB/s
-readseq         :   0.114 micros/op;  906.5 MB/s
+fillrandom           :   0.572 micros/op;  180.0 MB/s
+readrandom           :   0.248 micros/op;  415.6 MB/s
            database: specious
-fillseq         :   6.315 micros/op;   16.3 MB/s
-readseq         :   3.011 micros/op;   34.2 MB/s
-fillrandom      :   6.289 micros/op;   16.4 MB/s
-readrandom      :  68.097 micros/op;    1.5 MB/s
+fillseq              :   8.661 micros/op;   11.9 MB/s
+readseq              :   2.402 micros/op;   42.9 MB/s
+fillrandom           :   8.648 micros/op;   11.9 MB/s
+readrandom           :   4.894 micros/op;   21.0 MB/s
+fs-write             :  14.517 micros/op;  269.1 MB/s
+fs-read              :   2.482 micros/op; 1573.5 MB/s
            database: leveldb
-fillseq         :  10.392 micros/op;    9.9 MB/s
-readseq         :   2.526 micros/op;   40.8 MB/s
-fillrandom      :  10.487 micros/op;    9.8 MB/s
-readrandom      :   4.500 micros/op;   22.9 MB/s
+fillseq              :   9.993 micros/op;   10.3 MB/s
+readseq              :   2.554 micros/op;   40.3 MB/s
+fillrandom           :   9.970 micros/op;   10.3 MB/s
+readrandom           :   4.039 micros/op;   25.5 MB/s
 ```
 
 On galois (a Linux desktop with a fast SSD):
 
 ```
            database: mem
-fillseq         :   0.820 micros/op;  125.6 MB/s
-readseq         :   0.115 micros/op;  896.6 MB/s
+fillrandom           :   0.662 micros/op;  155.6 MB/s
+readrandom           :   0.223 micros/op;  461.7 MB/s
            database: specious
-fillseq         :   4.771 micros/op;   21.6 MB/s
-readseq         :   2.098 micros/op;   49.1 MB/s
-fillrandom      :   4.786 micros/op;   21.5 MB/s
-readrandom      :  41.982 micros/op;    2.5 MB/s
+fillseq              :   7.668 micros/op;   13.4 MB/s
+readseq              :   1.651 micros/op;   62.4 MB/s
+fillrandom           :   7.692 micros/op;   13.4 MB/s
+readrandom           :   3.275 micros/op;   31.5 MB/s
+fs-write             :   4.435 micros/op;  880.7 MB/s
+fs-read              :   1.882 micros/op; 2074.7 MB/s
            database: leveldb
-fillseq         :   8.168 micros/op;   12.6 MB/s
-readseq         :   2.878 micros/op;   35.8 MB/s
-fillrandom      :   7.584 micros/op;   13.6 MB/s
-readrandom      :   4.460 micros/op;   23.1 MB/s
+fillseq              :   8.424 micros/op;   12.2 MB/s
+readseq              :   2.825 micros/op;   36.5 MB/s
+fillrandom           :   7.532 micros/op;   13.7 MB/s
+readrandom           :   4.514 micros/op;   22.8 MB/s
+
 ```
