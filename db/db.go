@@ -1,14 +1,25 @@
 package db
 
 import (
+	"time"
+
 	"github.com/tchajed/specious-db/fs"
 )
 
+type CompactionStats struct {
+	TotalTime time.Duration
+}
+
+func (stats *CompactionStats) AddTimeSince(start time.Time) {
+	stats.TotalTime += time.Now().Sub(start)
+}
+
 // A Database is a persistent key-value store.
 type Database struct {
-	fs     fs.Filesys
-	log    *dbLog
-	mf     Manifest
+	fs    fs.Filesys
+	log   *dbLog
+	mf    Manifest
+	Stats *CompactionStats
 }
 
 func (db *Database) Get(k Key) MaybeValue {
@@ -41,7 +52,7 @@ func Init(filesys fs.Filesys) *Database {
 	fs.DeleteAll(filesys)
 	mf := initManifest(filesys)
 	log := initLog(filesys)
-	return &Database{filesys, log, mf}
+	return &Database{filesys, log, mf, new(CompactionStats)}
 }
 
 // Open recovers a Database from an existing on-disk database (of course this
@@ -61,10 +72,12 @@ func Open(fs fs.Filesys) *Database {
 		fs.Truncate("log")
 	}
 	log := initLog(fs)
-	return &Database{fs, log, mf}
+	return &Database{fs, log, mf, new(CompactionStats)}
 }
 
 func (db *Database) compactLog() {
+	start := time.Now()
+	defer db.Stats.AddTimeSince(start)
 	updates := db.log.Updates()
 	if len(updates) == 0 {
 		return
@@ -80,6 +93,8 @@ func (db *Database) compactLog() {
 }
 
 func (db *Database) compactYoung() {
+	start := time.Now()
+	defer db.Stats.AddTimeSince(start)
 	var youngTables []uint32
 	var level1Tables []uint32
 	var updateIterators []UpdateIterator

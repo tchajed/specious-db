@@ -53,11 +53,17 @@ func initDb(filesys fs.Filesys) database {
 }
 
 func showNum(i int) string {
-	if i > 2000 {
-		if i%1000 == 0 {
-			return fmt.Sprintf("%dK", i/1000)
+	if i > 2e6 {
+		if i%1e6 == 0 {
+			return fmt.Sprintf("%dM", i/1e6)
 		}
-		return fmt.Sprintf("%.1fK", float64(i)/1000)
+		return fmt.Sprintf("%.1fM", float64(i)/1e6)
+	}
+	if i > 2e3 {
+		if i%1e3 == 0 {
+			return fmt.Sprintf("%dK", i/1e3)
+		}
+		return fmt.Sprintf("%.1fK", float64(i)/1e3)
 	}
 	return fmt.Sprintf("%d", i)
 }
@@ -229,9 +235,9 @@ func main() {
 	fmt.Println(strings.Repeat("-", 30))
 
 	fs := initFs()
-	db := initDb(fs)
+	database := initDb(fs)
 	start := time.Now()
-	end := runBenchmarks(fs, db)
+	end := runBenchmarks(fs, database)
 
 	if *printStats {
 		fsstats := fs.GetStats()
@@ -239,6 +245,15 @@ func main() {
 		reads := stats{fsstats.ReadOps, fsstats.ReadBytes, start, &end}
 		fmt.Printf("%-20s : %s [%6d kops]\n", "[meta] fs-writes", writes.formatStats(), writes.Ops/1000)
 		fmt.Printf("%-20s : %s [%6d kops]\n", "[meta] fs-reads", reads.formatStats(), reads.Ops/1000)
+		switch speciousDb := database.(type) {
+		case *db.Database:
+			compactionTime := speciousDb.Stats.TotalTime
+			totalTime := end.Sub(start)
+			fmt.Printf("%-20s : %0.3f [%0.1f sec]\n", "[meta] compaction",
+				float64(compactionTime)/float64(totalTime),
+				float64(compactionTime)/float64(time.Second))
+		default:
+		}
 	}
 
 	if *deleteDatabase {
