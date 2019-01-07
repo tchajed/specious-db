@@ -9,8 +9,8 @@ import (
 
 // Table interface
 //
-// An Table stores a entries sorted by key on disk, with an efficient
-// in-memory index to find keys on disk.
+// An Table stores updates (entries for puts and deleted keys) sorted by key on
+// disk, with an efficient in-memory index to find keys on disk.
 //
 // table format:
 // entries: KeyUpdate*
@@ -120,6 +120,7 @@ func NewTable(ident uint32, f fs.ReadFile, entries []indexEntry) Table {
 	return Table{ident, f, newTableIndex(entries)}
 }
 
+// OpenTable reads a table on-disk, initializing the in-memory cache.
 func OpenTable(ident uint32, fs fs.Filesys) Table {
 	f := fs.Open(identToName(ident))
 	indexData := readIndexData(f)
@@ -131,6 +132,7 @@ func OpenTable(ident uint32, fs fs.Filesys) Table {
 	return Table{ident, f, index}
 }
 
+// MaybeMaybeValue is a poor man's option (option Value).
 type MaybeMaybeValue struct {
 	Valid bool
 	MaybeValue
@@ -141,6 +143,11 @@ func (t Table) readIndexEntry(h SliceHandle) Decoder {
 	return newDecoder(data)
 }
 
+// Get reads a key from the table.
+//
+// Since tables represent only part of the database, this Get returns a
+// MaybeMaybeValue to represent a key that is not part of the table, as opposed
+// to a key the table has a deletion marker for.
 func (t Table) Get(k Key) MaybeMaybeValue {
 	h := t.index.Get(k)
 	// if handle is not found in index, then key is not present in table
@@ -205,10 +212,12 @@ func (i *tableIterator) Next() KeyUpdate {
 	return u
 }
 
+// Updates returns all the updates (puts an deletes) the table holds.
 func (t Table) Updates() UpdateIterator {
 	return newIterator(t)
 }
 
+// Keys gives the range of keys covered by this table.
 func (t Table) Keys() KeyRange {
 	return t.index.Keys()
 }
@@ -219,8 +228,11 @@ type bufFile struct {
 }
 
 func (f bufFile) Close() {
-	f.Writer.Flush()
-	err := f.f.Close()
+	err := f.Writer.Flush()
+	if err != nil {
+		panic(err)
+	}
+	err = f.f.Close()
 	if err != nil {
 		panic(err)
 	}

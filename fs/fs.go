@@ -18,6 +18,8 @@ type ReadFile interface {
 	io.ReadCloser
 }
 
+// Stats holds some basic stats about what filesystem operations have been
+// issued.
 type Stats struct {
 	ReadOps    int
 	ReadBytes  int

@@ -4,6 +4,7 @@ import (
 	"github.com/tchajed/specious-db/fs"
 )
 
+// A Database is a persistent key-value store.
 type Database struct {
 	fs  fs.Filesys
 	log *dbLog
@@ -34,6 +35,8 @@ func (db *Database) Delete(k Key) {
 
 var _ Store = &Database{}
 
+// Init creates a new database in a filesystem, replacing anything in the
+// directory.
 func Init(filesys fs.Filesys) *Database {
 	fs.DeleteAll(filesys)
 	mf := initManifest(filesys)
@@ -41,6 +44,8 @@ func Init(filesys fs.Filesys) *Database {
 	return &Database{filesys, log, mf}
 }
 
+// Open recovers a Database from an existing on-disk database (of course this
+// also works following a clean shutdown).
 func Open(fs fs.Filesys) *Database {
 	mf := recoverManifest(fs)
 	updates := recoverUpdates(fs)
@@ -53,9 +58,6 @@ func Open(fs fs.Filesys) *Database {
 		}
 		t.CloseAndInstall(0)
 		// if we crash here, the log will be converted to a duplicate table
-		//
-		// NOTE: these tables will only be merged by another compaction (once
-		// that's implemented)
 		fs.Truncate("log")
 	}
 	log := initLog(fs)
@@ -98,15 +100,23 @@ func (db *Database) compactYoung() {
 	t.CloseAndInstall(1)
 }
 
+// DeleteObsoleteFiles deletes files the database doesn't know about.
+//
+// This isn't currently correctly called by recovery, but at some point it is
+// required to clean up partially constructed tables that weren't successfully
+// added to the database.
 func (db *Database) DeleteObsoleteFiles() {
 	db.mf.cleanup()
 }
 
+// Compact manually triggers a full compaction of the log and tables.
 func (db *Database) Compact() {
 	db.compactLog()
 	db.compactYoung()
 }
 
+// Close cleanly shuts down the database, and moreover pushes all data to tables
+// for simple recovery.
 func (db *Database) Close() {
 	db.compactLog()
 	db.log.Close()
