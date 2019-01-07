@@ -42,9 +42,8 @@ func (t entrySearchTree) Get(k Key) MaybeMaybeValue {
 	mv, ok := t.cache[k]
 	if ok {
 		return MaybeMaybeValue{true, mv}
-	} else {
-		return MaybeMaybeValue{Valid: false}
 	}
+	return MaybeMaybeValue{Valid: false}
 }
 
 func (t entrySearchTree) Put(k Key, v Value) {
@@ -109,7 +108,10 @@ func initLog(fs fs.Filesys) *dbLog {
 func recoverUpdates(fs fs.Filesys) []KeyUpdate {
 	f := fs.Open("log")
 	txns := log.RecoverTxns(f)
-	f.Close()
+	err := f.Close()
+	if err != nil {
+		panic(err)
+	}
 	updates := make([]KeyUpdate, 0, len(txns))
 	for _, txn := range txns {
 		r := newDecoder(txn)

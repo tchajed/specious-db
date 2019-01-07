@@ -31,19 +31,25 @@ const (
 	commitRecord
 )
 
-type LogFile interface {
-	io.WriteCloser
-}
-
+// Writer gives access to a transactional log backed by an io.WriteCloser.
+// Transactions are uninterpreted byte arrays. Assuming writes (appends) to this
+// interface are persisted in order, log.RecoverTxns allows to recover any
+// committed and persisted transactions even if the system halts in the middle
+// of adding a transaction. During normal operation the caller is expected to
+// record transactions in memory (probably in a non-byte-array format) and
+// should not need to use the log for anything, thus the log.Writer has no read
+// API.
 type Writer struct {
-	log LogFile
+	log io.WriteCloser
 	enc *bin.Encoder
 }
 
-func New(f LogFile) Writer {
+// New allocates a new log.Writer around a file.
+func New(f io.WriteCloser) Writer {
 	return Writer{f, bin.NewEncoder(f)}
 }
 
+// Add records a transaction in the log file.
 func (l Writer) Add(data []byte) {
 	buf := bytes.NewBuffer(make([]byte, 0, 1+2+len(data)+1))
 	localEnc := bin.NewEncoder(buf)
@@ -53,10 +59,16 @@ func (l Writer) Add(data []byte) {
 	l.enc.Bytes(buf.Bytes())
 }
 
+// Close finishes writing the log. The Writer should not be used afterward.
 func (l Writer) Close() {
-	l.log.Close()
+	err := l.log.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
+// RecoverTxns returns any committed and persisted transactions from a reader
+// over a log file, handling partial writes to the log.
 func RecoverTxns(log io.Reader) (txns [][]byte) {
 	buf, err := ioutil.ReadAll(log)
 	if err != nil {
