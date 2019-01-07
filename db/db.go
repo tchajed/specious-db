@@ -6,9 +6,9 @@ import (
 
 // A Database is a persistent key-value store.
 type Database struct {
-	fs  fs.Filesys
-	log *dbLog
-	mf  Manifest
+	fs     fs.Filesys
+	log    *dbLog
+	mf     Manifest
 }
 
 func (db *Database) Get(k Key) MaybeValue {
@@ -65,7 +65,6 @@ func Open(fs fs.Filesys) *Database {
 }
 
 func (db *Database) compactLog() {
-	db.log.Close()
 	updates := db.log.Updates()
 	if len(updates) == 0 {
 		return
@@ -75,6 +74,7 @@ func (db *Database) compactLog() {
 		t.Put(e)
 	}
 	t.CloseAndInstall(0)
+	db.log.Close()
 	db.fs.Truncate("log")
 	db.log = initLog(db.fs)
 }

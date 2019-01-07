@@ -121,7 +121,7 @@ func readFile(chunkSize int, s *stats, fs fs.Filesys) {
 	}
 }
 
-func runBenchmarks(fs fs.Filesys, db database) {
+func runBenchmarks(fs fs.Filesys, db database) time.Time {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -192,6 +192,9 @@ func runBenchmarks(fs fs.Filesys, db database) {
 		}
 		s.Report()
 	}
+	end := time.Now()
+	db.Close()
+	return end
 }
 
 func main() {
@@ -228,9 +231,7 @@ func main() {
 	fs := initFs()
 	db := initDb(fs)
 	start := time.Now()
-	runBenchmarks(fs, db)
-	end := time.Now()
-	db.Close()
+	end := runBenchmarks(fs, db)
 
 	if *printStats {
 		fsstats := fs.GetStats()
