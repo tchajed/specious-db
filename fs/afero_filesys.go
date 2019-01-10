@@ -105,6 +105,13 @@ func (fs aferoFs) Delete(fname string) {
 	}
 }
 
+func (fs aferoFs) Rename(src, dst string) {
+	err := fs.fs.Rename(abs(src), abs(dst))
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (fs aferoFs) Truncate(fname string) {
 	f, err := fs.fs.OpenFile(abs(fname), os.O_WRONLY|os.O_TRUNC, 0)
 	if err != nil {

@@ -48,6 +48,7 @@ type Filesys interface {
 	Create(fname string) File
 	Delete(fname string)
 	Truncate(fname string)
+	Rename(src, dst string)
 	AtomicCreateWith(fname string, data []byte)
 
 	// performance counters

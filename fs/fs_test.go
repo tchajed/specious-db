@@ -34,7 +34,7 @@ func (suite FsSuite) CreateFile(fname string, contents []byte) {
 }
 
 func (suite FsSuite) ReadFile(fname string) []byte {
-	f := suite.fs.Open("foo")
+	f := suite.fs.Open(fname)
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
 		panic(err)
@@ -46,6 +46,12 @@ func (suite FsSuite) ReadFile(fname string) []byte {
 func (suite FsSuite) TestCreate() {
 	suite.CreateFile("foo", []byte{2})
 	suite.Equal([]byte{2}, suite.ReadFile("foo"),
+		"file should have same contents as written")
+}
+
+func (suite FsSuite) TestCreateBar() {
+	suite.CreateFile("bar", []byte{2})
+	suite.Equal([]byte{2}, suite.ReadFile("bar"),
 		"file should have same contents as written")
 }
 
@@ -73,6 +79,14 @@ func (suite FsSuite) TestDelete() {
 	suite.Equal([]string{"/foo"}, suite.fs.List())
 	suite.fs.Delete("foo")
 	suite.Empty(suite.fs.List())
+}
+
+func (suite FsSuite) TestRename() {
+	suite.CreateFile("foo", []byte{1,2,3})
+	suite.fs.Rename("foo", "bar")
+	suite.Equal([]string{"/bar"}, suite.fs.List())
+	suite.Equal([]byte{1,2,3}, suite.ReadFile("bar"),
+		"rename should preserve contents")
 }
 
 func (suite FsSuite) TestSize() {
