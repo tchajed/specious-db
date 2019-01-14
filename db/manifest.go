@@ -65,6 +65,7 @@ func (m Manifest) cleanup() {
 	}
 }
 
+// Get reads a key from the tables managed by the manifest file.
 func (m Manifest) Get(k Key) MaybeValue {
 	// NOTE: need to traverse in reverse _chronological_ order so later updates
 	// overwrite earlier ones
@@ -121,16 +122,41 @@ func recoverManifest(fs fs.Filesys) Manifest {
 type tableCreator struct {
 	// think of the tableCreator as being a set of methods on a manifest, keyed
 	// by a (new, uninstalled) table ident
-	m              *Manifest
+	fs             fs.Filesys
 	ident          uint32
 	w              *tableWriter
-	tablesSubsumed map[uint32]bool
 }
 
-func (m *Manifest) CreateTable(youngTables []uint32, level1tables []uint32) tableCreator {
+// CreateTable initializes a new table writer
+//
+// This operation requires write permissions (for silly reasons - it only
+// protects the identifier counter)
+func (m *Manifest) CreateTable() tableCreator {
 	id := m.nextIdent
 	m.nextIdent++
 	f := m.fs.Create(identToName(id))
+	return tableCreator{m.fs, id, newTableWriter(f)}
+}
+
+// Put adds to an in-progress background table.
+//
+// This operation is logically _read-only_ on the manifest's table, including
+// wrt crashes.
+func (c tableCreator) Put(e KeyUpdate) {
+	c.w.Put(e)
+}
+
+// Close finishes writing out a background table.
+//
+// This operation is logically _read-only_.
+func (c tableCreator) Close() Table {
+	entries := c.w.Close()
+	f := c.fs.Open(identToName(c.ident))
+	newTable := NewTable(c.ident, f, entries)
+	return newTable
+}
+
+func subsumedTables(youngTables []uint32, level1tables []uint32) map[uint32]bool {
 	tablesSubsumed := make(map[uint32]bool, len(youngTables)+len(level1tables))
 	for _, ident := range youngTables {
 		tablesSubsumed[ident] = true
@@ -138,31 +164,35 @@ func (m *Manifest) CreateTable(youngTables []uint32, level1tables []uint32) tabl
 	for _, ident := range level1tables {
 		tablesSubsumed[ident] = true
 	}
-	return tableCreator{m, id, newTableWriter(f), tablesSubsumed}
+	return tablesSubsumed
 }
 
-func (c tableCreator) Put(e KeyUpdate) {
-	c.w.Put(e)
-}
-
-func (c tableCreator) CloseAndInstall(level int) {
-	entries := c.w.Close()
-	f := c.m.fs.Open(identToName(c.ident))
-	newTable := NewTable(c.ident, f, entries)
+// InstallTable adds a previously created table to the tracked tables in the manifest.
+//
+// Requires that the table already be stored in the right place (using
+// m.CreateTable() and its associated operations).
+//
+// This operation requires write permissions to the manifest.
+func (m *Manifest) InstallTable(newTable Table, youngTables []uint32, level1tables []uint32, level int) {
+	tablesSubsumed := subsumedTables(youngTables, level1tables)
 	levels := make([][]Table, 2)
-	for level, tables := range c.m.tables {
+	for level, tables := range m.tables {
 		for _, t := range tables {
-			if !c.tablesSubsumed[t.ident] {
+			if !tablesSubsumed[t.ident] {
 				levels[level] = append(levels[level], t)
 			}
 		}
 	}
 	levels[level] = append(levels[level], newTable)
-	c.m.tables = levels
-	c.m.save()
-	for ident := range c.tablesSubsumed {
-		c.m.fs.Delete(identToName(ident))
+	m.tables = levels
+	m.save()
+	for ident := range tablesSubsumed {
+		m.fs.Delete(identToName(ident))
 	}
+
+}
+
+func (c tableCreator) CloseAndInstall(level int) {
 }
 
 // Save writes out a representation of the manifest to disk (atomically).

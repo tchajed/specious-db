@@ -1,6 +1,7 @@
 package db
 
 import (
+	"sync"
 	"time"
 
 	"github.com/tchajed/specious-db/fs"
@@ -20,9 +21,12 @@ type Database struct {
 	log   *dbLog
 	mf    Manifest
 	Stats *CompactionStats
+	l     *sync.RWMutex
 }
 
 func (db *Database) Get(k Key) MaybeValue {
+	db.l.RLock()
+	defer db.l.RUnlock()
 	mv := db.log.Get(k)
 	if mv.Valid {
 		return mv.MaybeValue
@@ -31,6 +35,9 @@ func (db *Database) Get(k Key) MaybeValue {
 }
 
 func (db *Database) Put(k Key, v Value) {
+	db.l.Lock()
+	defer db.l.Unlock()
+
 	db.log.Put(k, v)
 	if db.log.SizeEstimate() >= 4*1024*1024 {
 		db.compactLog()
@@ -41,6 +48,9 @@ func (db *Database) Put(k Key, v Value) {
 }
 
 func (db *Database) Delete(k Key) {
+	db.l.Lock()
+	defer db.l.Unlock()
+
 	db.log.Delete(k)
 }
 
@@ -52,7 +62,7 @@ func Init(filesys fs.Filesys) *Database {
 	fs.DeleteAll(filesys)
 	mf := initManifest(filesys)
 	log := initLog(filesys)
-	return &Database{filesys, log, mf, new(CompactionStats)}
+	return &Database{filesys, log, mf, new(CompactionStats), new(sync.RWMutex)}
 }
 
 // Open recovers a Database from an existing on-disk database (of course this
@@ -63,36 +73,41 @@ func Open(fs fs.Filesys) *Database {
 	if len(updates) > 0 {
 		// save these to a table; this should be crash-safe because a
 		// partially-written table will be deleted by DeleteObsoleteFiles()
-		t := mf.CreateTable(nil, nil)
+		t := mf.CreateTable()
 		for _, e := range updates {
 			t.Put(e)
 		}
-		t.CloseAndInstall(0)
+		mf.InstallTable(t.Close(), nil, nil, 0)
 		// if we crash here, the log will be converted to a duplicate table
 		fs.Truncate("log")
 	}
 	log := initLog(fs)
-	return &Database{fs, log, mf, new(CompactionStats)}
+	return &Database{fs, log, mf, new(CompactionStats), new(sync.RWMutex)}
 }
 
 func (db *Database) compactLog() {
+	// TODO: this could be more fine-grained
+	db.l.Lock()
+	defer db.l.Unlock()
 	start := time.Now()
 	defer db.Stats.AddTimeSince(start)
 	updates := db.log.Updates()
 	if len(updates) == 0 {
 		return
 	}
-	t := db.mf.CreateTable(nil, nil)
+	t := db.mf.CreateTable()
 	for _, e := range updates {
 		t.Put(e)
 	}
-	t.CloseAndInstall(0)
+	table := t.Close()
+	db.mf.InstallTable(table, nil, nil, 0)
 	db.log.Close()
 	db.fs.Truncate("log")
 	db.log = initLog(db.fs)
 }
 
 func (db *Database) compactYoung() {
+	db.l.RLock()
 	start := time.Now()
 	defer db.Stats.AddTimeSince(start)
 	var youngTables []uint32
@@ -107,12 +122,16 @@ func (db *Database) compactYoung() {
 		level1Tables = append(level1Tables, t.ident)
 		updateIterators = append(updateIterators, t.Updates())
 	}
-	t := db.mf.CreateTable(youngTables, level1Tables)
+	t := db.mf.CreateTable()
 	it := MergeUpdates(updateIterators)
 	for it.HasNext() {
 		t.Put(it.Next())
 	}
-	t.CloseAndInstall(1)
+	table := t.Close()
+	db.l.RUnlock()
+	db.l.Lock()
+	db.mf.InstallTable(table, youngTables, level1Tables, 1)
+	db.l.Unlock()
 }
 
 // DeleteObsoleteFiles deletes files the database doesn't know about.

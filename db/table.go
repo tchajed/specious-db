@@ -85,7 +85,9 @@ func binSearch(entries []indexEntry, k Key) int {
 		}
 		return upperHalfIndex + mid + 1
 	}
-	// mid.Keys.Contains(k)
+	if !entries[mid].Keys.Contains(k) {
+		panic("logical error in binsearch")
+	}
 	return mid
 }
 
